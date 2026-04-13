@@ -1,0 +1,18 @@
+# Виртуальное окружение
+venv/
+__pycache__/
+*.pyc
+*.pyo
+
+# Pygame/OS
+.DS_Store
+Thumbs.db
+
+# PyInstaller сборка
+build/
+dist/
+*.spec
+
+# IDE
+.vscode/
+.idea/
