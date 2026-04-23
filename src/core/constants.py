@@ -21,3 +21,12 @@ class GameState:
     RUNNING = "RUNNING"
     PAUSED = "PAUSED"
     EXITING = "EXITING"
+
+STEP_INTERVAL = 0.3
+MAX_STEPS = 64
+
+class HeroState:
+    IDLE = "IDLE"
+    MOVING = "MOVING"
+    WIN = "WIN"
+    LOSE = "LOSE"
