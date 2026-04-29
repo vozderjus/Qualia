@@ -1,5 +1,6 @@
 from src.core.constants import HeroState, COLORS
 from src.grid.grid import Grid
+from src.grid.tiles import TileType
 
 class Hero:
     def __init__(self):
@@ -43,7 +44,7 @@ class Hero:
 
         self.x, self.y = nx, ny
 
-        if grid.get_tile(nx, ny) == 3:
+        if grid.get_tile(self.x, self.y) == TileType.EXIT:
             self.set_state(HeroState.WIN)
             return HeroState.WIN
 
