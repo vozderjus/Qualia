@@ -8,20 +8,15 @@ WIDTH = GRID_W * TILE_SIZE
 HEIGHT = GRID_H * TILE_SIZE
 FPS = 60
 
+# src/core/constants.py
 COLORS = {
-    "bg": (18, 18, 24),
-    "grid_line": (40, 40, 50),
-    "hero_idle": (180, 180, 180),
-    "hero_moving": (76, 175, 80),
-    "hero_lose": (220, 60, 60),
-    "hero_win": (0, 230, 100),
-    "text": (230, 230, 230),
-    "debug_overlay": (0, 0, 0, 180),
-    "wall": (100, 100, 110),
-    "start": (76, 175, 80),
-    "exit": (255, 193, 7),
-    "rule": (100, 150, 255),
-    "trap": (220, 60, 60)
+    "BG": (25, 25, 35),
+    "EMPTY": (40, 40, 55),
+    "WALL": (100, 100, 120),
+    "START": (50, 100, 255),
+    "EXIT": (50, 200, 50),
+    "TRAP": (200, 50, 50),
+    "RULE_BG": (70, 70, 90),
 }
 
 class GameState:

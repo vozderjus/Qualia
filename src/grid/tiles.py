@@ -11,6 +11,8 @@ class TileType(IntEnum):
     RULE_UP = 6
     RULE_LEFT = 7
     RULE_DOWN = 8
+    RULE_ROTATE = 9
+    RULE_JUMP = 10
 
 @dataclass(frozen=True)
 class TileProperties:
@@ -29,6 +31,8 @@ TILE_PROPERTIES: dict[TileType, TileProperties] = {
     TileType.RULE_RIGHT:  TileProperties(is_rule=True),
     TileType.RULE_UP:     TileProperties(is_rule=True),
     TileType.RULE_LEFT:   TileProperties(is_rule=True),
+    TileType.RULE_ROTATE: TileProperties(is_rule=True),
+    TileType.RULE_JUMP: TileProperties(is_rule=True),
     TileType.RULE_DOWN:   TileProperties(is_rule=True),
 }
 
