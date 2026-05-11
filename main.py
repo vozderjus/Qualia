@@ -1,138 +1,196 @@
+"""
+main.py — Главный координатор игры RuleGrid.
+Отвечает за:
+1. Инициализацию окна Pygame и подсистем (Сетка, Инвентарь, HUD).
+2. Игровой цикл (Game Loop) с разделением логики и рендера.
+3. Обработку ввода (Мышь -> HUD -> Grid).
+"""
+
+import pygame
 import sys
 import os
-import pygame
-from src.core.constants import WIDTH, HEIGHT, FPS, GameState, HeroState, STEP_INTERVAL, COLORS
+
+# Импорт наших модулей
+from src.core.constants import WIDTH, HEIGHT, TILE_SIZE, COLORS
 from src.grid.grid import Grid
 from src.grid.tiles import TileType
-from src.entities.hero import Hero
-from src.logic.interpreter import RuleInterpreter, RULE_MAP
+from src.logic.inventory import Inventory
+from src.ui.hud import HUD
 
-def get_resource_path(relative_path: str) -> str:
-    base_path = getattr(sys, "_MEIPASS", os.path.abspath("."))
-    return os.path.join(base_path, relative_path)
 
-def main() -> None:
-    pygame.init()
-    screen = pygame.display.set_mode((WIDTH, HEIGHT))
-    pygame.display.set_caption("RuleGrid v0.2")
-    clock = pygame.time.Clock()
-    font = pygame.font.SysFont("consolas", 18)
-    
-    grid = Grid(16, 16)
-    hero = Hero()
-    interpreter = RuleInterpreter()
-    
-    grid.set_tile(1, 1, TileType.START)
-    grid.set_tile(1, 1, TileType.RULE_RIGHT)
-    grid.set_tile(2, 1, TileType.RULE_RIGHT)
-    grid.set_tile(3, 1, TileType.RULE_DOWN)
-    grid.set_tile(3, 2, TileType.RULE_DOWN)
-    grid.set_tile(3, 3, TileType.RULE_RIGHT)
-    grid.set_tile(4, 3, TileType.RULE_RIGHT)
-    grid.set_tile(5, 3, TileType.EXIT)
-    grid.set_tile(4, 2, TileType.TRAP)
-    
-    start_x, start_y = 1, 1
-    hero.reset(start_x, start_y)
-    interpreter.load_from_grid(grid)
+class Game:
+    def __init__(self):
+        # 1. Инициализация Pygame
+        pygame.init()
+        self.screen = pygame.display.set_mode((WIDTH, HEIGHT))
+        pygame.display.set_caption("RuleGrid | Phase 2.1")
+        self.clock = pygame.time.Clock()
+        
+        # 2. Загрузка ассетов (Картинки правил)
+        # Мы загружаем их один раз здесь и передаем в HUD
+        self.rule_images = self._load_assets()
 
-    app_state = GameState.RUNNING
-    sim_state = "IDLE"
-    debug_mode = False
-    last_step_time = pygame.time.get_ticks()
-    
-    print("[System] SPACE to Play/Pause. F1 for Debug.")
+        # 3. Инициализация игровых подсистем
+        self.grid = Grid(16, 16)  # Поле 16x16
+        
+        # Создаем тестовое состояние: Стартовая позиция героя (0,0) и Выход (15,15)
+        # (В будущем это будет читаться из файла уровня)
+        self.grid.set_tile(0, 0, TileType.START)
+        self.grid.set_tile(15, 15, TileType.EXIT)
 
-    try:
-        while app_state != GameState.EXITING:
-            dt = clock.tick(FPS)
-            current_time = pygame.time.get_ticks()
+        self.inventory = Inventory.create_default()
+        
+        # Передаем картинки в HUD, чтобы он мог их рисовать
+        self.hud = HUD(self.screen, self.inventory, self.rule_images)
 
-            for event in pygame.event.get():
-                if event.type == pygame.QUIT:
-                    app_state = GameState.EXITING
-                elif event.type == pygame.KEYDOWN:
-                    if event.key == pygame.K_ESCAPE:
-                        app_state = GameState.EXITING
-                    elif event.key == pygame.K_F1:
-                        debug_mode = not debug_mode
-                    elif event.key == pygame.K_SPACE:
-                        if sim_state == "IDLE" or sim_state == "TERMINATED":
-                            hero.reset(start_x, start_y)
-                            interpreter.load_from_grid(grid)
-                            sim_state = "PLAYING"
-                            last_step_time = current_time
-                            print("[Sim] Started.")
-                        elif sim_state == "PLAYING":
-                            sim_state = "IDLE"
-                            print("[Sim] Paused.")
+        # 4. Состояния игры
+        self.debug_mode = False
+        self.running = True
 
-            if sim_state == "PLAYING" and current_time - last_step_time >= STEP_INTERVAL * 1000:
-                hero_state = interpreter.step(hero, grid)
-                last_step_time = current_time
-                
-                if hero_state in (HeroState.WIN, HeroState.LOSE, HeroState.IDLE):
-                    sim_state = "TERMINATED"
-                    print(f"[Sim] Finished: {hero_state}")
+    def _load_assets(self) -> dict:
+        """
+        Простая загрузка картинок.
+        Возвращает словарь {TileType: Surface}
+        """
+        assets = {}
+        asset_dir = os.path.join("assets", "rules")
+        
+        # Карта соответствия типов и имен файлов
+        # Если файла нет, вернем None (HUD отрисует заглушку)
+        file_map = {
+            TileType.RULE_RIGHT: "right.png",
+            TileType.RULE_UP:    "up.png",
+            TileType.RULE_LEFT:  "left.png",
+            TileType.RULE_DOWN:  "down.png",
+            TileType.RULE_ROTATE: "rotate.png",
+            TileType.RULE_JUMP:  "jump.png",
+        }
 
-            screen.fill(COLORS["bg"])
+        for tile_type, filename in file_map.items():
+            path = os.path.join(asset_dir, filename)
+            try:
+                # convert_alpha() важен для прозрачности PNG
+                raw = pygame.image.load(path).convert_alpha()
+                # Масштабируем ПОД размер слота (48x48) один раз при старте
+                assets[tile_type] = pygame.transform.scale(raw, (48, 48))
+            except pygame.error:
+                assets[tile_type] = None
+                print(f"⚠️ Не найдена картинка: {path}")
+        
+        return assets
 
-            for y in range(grid.height):
-                for x in range(grid.width):
-                    tile = grid.get_tile(x, y)
-                    color = COLORS["bg"]
-                    if tile == TileType.WALL: color = COLORS['wall']
-                    elif tile == TileType.START: color = COLORS['start']
-                    elif tile == TileType.EXIT: color = COLORS['exit']
-                    elif tile in (TileType.RULE_RIGHT, TileType.RULE_UP, TileType.RULE_LEFT, TileType.RULE_DOWN):
-                        color = COLORS['rule']
-                    elif tile == TileType.TRAP: color = COLORS['trap']
-                    
-                    pygame.draw.rect(screen, color, grid.to_pixel_rect(x, y))
-                    pygame.draw.rect(screen, COLORS["grid_line"], grid.to_pixel_rect(x, y), 1)
+    def run(self):
+        """Главный цикл (Game Loop)."""
+        while self.running:
+            self.handle_events()
+            self.update()
+            self.draw()
             
-            hero_color_map = {
-                HeroState.IDLE: COLORS["hero_idle"],
-                HeroState.MOVING: COLORS["hero_moving"],
-                HeroState.LOSE: COLORS["hero_lose"],
-                HeroState.WIN: COLORS["hero_win"]
-            }
-
-            hero_color = hero_color_map.get(hero.state, (255, 0, 255))
-            hero_rect = grid.to_pixel_rect(hero.x, hero.y).inflate(-8, -8)
-            pygame.draw.rect(screen, hero_color, hero_rect)
-            pygame.draw.rect(screen, (0, 0, 0), hero_rect, 2)
-
-            status_text = f"STATE: {sim_state} | HERO: {hero.state}"
-            if sim_state == "TERMINATED":
-                status_text += f" | {'YOU WIN!' if hero.state == HeroState.WIN else 'GAME OVER'}"
-            prompt_surf = font.render(status_text, True, COLORS["text"])
-            screen.blit(prompt_surf, (10, HEIGHT - 30))
-            
-            if debug_mode:
-                overlay = pygame.Surface((WIDTH, HEIGHT), pygame.SRCALPHA)
-                overlay.fill(COLORS["debug_overlay"])
-                screen.blit(overlay, (0, 0))
-
-                debug_lines = [
-                    f"FPS: {int(clock.get_fps())}",
-                    f"Hero Pos: ({hero.x}, {hero.y})",
-                    f"Hero FSM: {hero.state}",
-                    f"Steps: {hero.steps_taken}",
-                    f"Queue: {len(interpreter.queue)}",
-                    f"Next: {interpreter.current_rule}",
-                    f"Tick Delta: {current_time - last_step_time}ms"
-                ]
-                for i, line in enumerate(debug_lines):
-                    screen.blit(font.render(line, True, (240, 240, 240)), (15, 15 + i * 22))
-
-            pygame.display.flip()
-
-    except KeyboardInterrupt:
-        print("\n[System] Interrupted.")
-    finally:
+            # Ограничиваем FPS до 60
+            self.clock.tick(60)
+        
         pygame.quit()
-        print("[System] Clean exit.")
+        sys.exit()
+
+    def handle_events(self):
+        """Обработка ввода."""
+        mouse_pos = pygame.mouse.get_pos()
+        
+        for event in pygame.event.get():
+            if event.type == pygame.QUIT:
+                self.running = False
+                
+            elif event.type == pygame.KEYDOWN:
+                # F1 — включение режима отладки
+                if event.key == pygame.K_F1:
+                    self.debug_mode = not self.debug_mode
+                
+                # R — сброс уровня (возврат правил в инвентарь)
+                elif event.key == pygame.K_r:
+                    self.grid.reset_rules()
+                    self.inventory.restore_all()
+
+            elif event.type == pygame.MOUSEBUTTONDOWN:
+                if event.button == 1:  # Левая кнопка мыши (ЛКМ)
+                    # 1. Сначала проверяем клик по UI (инвентарю)
+                    slot_type = self.hud.get_slot_at(mouse_pos)
+                    if slot_type:
+                        self.inventory.select_tile(slot_type)
+                        continue # Если кликнули по UI, не ставим плитку на сетку!
+
+                    # 2. Если клик не по UI, проверяем сетку
+                    grid_pos = self.grid.screen_to_grid(mouse_pos)
+                    if grid_pos:
+                        row, col = grid_pos
+                        selected = self.inventory.get_selected()
+                        
+                        # Логика установки правила
+                        if selected and self.inventory.can_place(selected):
+                            if self.grid.is_cell_free(row, col):
+                                self.grid.place_tile(row, col, selected)
+                                self.inventory.consume(selected)
+                                
+                elif event.button == 3:  # Правая кнопка мыши (ПКМ)
+                    # Удаление правила (опционально)
+                    grid_pos = self.grid.screen_to_grid(mouse_pos)
+                    if grid_pos:
+                        row, col = grid_pos
+                        removed_type = self.grid.remove_tile(row, col)
+                        if removed_type:
+                            self.inventory.refund(removed_type)
+
+    def update(self):
+        """Логика обновления (Phase 2.1 пуста, так как симуляция еще не работает)."""
+        pass
+
+    def draw(self):
+        """Отрисовка всего на экране."""
+        # 1. Очистка экрана
+        self.screen.fill(COLORS["BG"])
+
+        # 2. Отрисовка сетки
+        self.grid.draw(self.screen)
+
+        # 3. Подготовка данных для HUD
+        mouse_pos = pygame.mouse.get_pos()
+        grid_hover = self.grid.screen_to_grid(mouse_pos)
+        selected = self.inventory.get_selected()
+        
+        # Проверяем, валидно ли размещение в этой ячейке
+        is_valid = (
+            grid_hover is not None and
+            selected is not None and
+            self.grid.is_cell_free(*grid_hover) and
+            self.inventory.can_place(selected)
+        )
+
+        # 4. Отрисовка HUD (Инвентарь + Подсветка)
+        # HUD рисует поверх сетки
+        self.hud = HUD(self.screen, self.inventory, TILE_SIZE, self.rule_images)
+
+        # 5. Дебаг-оверлей
+        if self.debug_mode:
+            self._draw_debug(mouse_pos, grid_hover)
+
+        pygame.display.flip()
+
+    def _draw_debug(self, mouse, grid_pos):
+        font = pygame.font.SysFont("consolas", 14)
+        lines = [
+            f"Debug Mode (F1)",
+            f"Mouse: {mouse}",
+            f"Grid Hover: {grid_pos}",
+            f"Selected: {self.inventory.get_selected()}",
+            f"Inventory: {self.inventory.to_dict()}"
+        ]
+        
+        y = 10
+        for line in lines:
+            surf = font.render(line, True, (255, 255, 0)) # Желтый текст
+            self.screen.blit(surf, (10, y))
+            y += 20
+
 
 if __name__ == "__main__":
-    main()
+    game = Game()
+    game.run()
