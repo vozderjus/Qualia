@@ -1,8 +1,6 @@
+import constants
 import pygame
-from .. import constants
-from code.uis import Button
-
-display_surface = pygame.display.set_mode((constants.WINDOW_WIDTH, constants.WINDOW_HEIGHT))
+from uis import Button
 
 BUTTONS = {
     "play": {
@@ -26,16 +24,15 @@ BUTTONS = {
 }
 
 class MenuScene:
-    def __init__(self, data=None):
-        self.data = data
+    def __init__(self, surface):
+        self.surface = surface
         self.buttons = BUTTONS
-        self.bg = pygame.image.load("images/main_menu_placeholder.jpg").convert()
+        self.bg = pygame.image.load("images/main_menu_placeholder.png").convert()
         self.clicked = False
     
     def draw(self):
         action = ''
-        display_surface.blit(self.bg, (0, 0))
-        
+        self.surface.blit(self.bg, (0, 0))
         #check for collisions and clicks
         pos = pygame.mouse.get_pos()
 
@@ -65,5 +62,3 @@ class MenuScene:
 
         if pygame.mouse.get_pressed()[0] == 0:
             self.clicked = False
-
-        return action

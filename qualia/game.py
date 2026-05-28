@@ -1,15 +1,25 @@
-import os, time, pygame
+import os
+import time
+
+import pygame
+from constants import WINDOW_HEIGHT, WINDOW_WIDTH
+from states.title import Title
+
+pygame.init()
+pygame.display.set_caption("Qualia")
 
 class Game():
     def __init__(self):
         self.GAME_W, self.GAME_H = 1280, 720
-        self.SCREEN_WIDTH, self.SCREEN_HEIGHT = 1280, 720
+        self.SCREEN_WIDTH, self.SCREEN_HEIGHT = WINDOW_WIDTH, WINDOW_HEIGHT
         self.game_canvas = pygame.Surface((self.GAME_W, self.GAME_H))
         self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         self.running, self.playing = True, True
         self.actions = {"left": False, "right": False, "up": False, "down": False, "interact": False, "pause": False, "inventory": False, "start": False}
         self.dt, self.prev_time = 0, 0 #framerate independance
         self.state_stack = [] #game states management
+        self.load_assets()
+        self.load_states()
 
     def game_loop(self):
         while self.playing:
@@ -66,10 +76,11 @@ class Game():
                     self.actions['start'] = False
     
     def update(self):
-        pass
+        self.state_stack[-1].update(self.dt, self.actions)
     
     # рендер наших сцен
     def render(self):
+        self.state_stack[-1].render(self.game_canvas)
         self.screen.blit(pygame.transform.scale(self.game_canvas, (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)), (0, 0))
         pygame.display.flip()
     
@@ -86,12 +97,18 @@ class Game():
         text_rect.center = (x, y)
         surface.blit(text_surface, text_rect)
     
+    # подгружаем все необходимые ассеты
     def load_assets(self):
         # указатели на директории
         self.images_dir = os.path.join("images")
         self.audio_dir = os.path.join("audio")
-        self.font = pygame.font.Font(os.path.join("font", "PixelifySans-VariableFont_wght.ttf"), 20)
+        self.font = pygame.font.Font(os.path.join("font", "PixelifySans-VariableFont_wght.ttf"), 80)
     
+    # основной стэк где будут подгружаться все состояния
+    def load_states(self):
+        self.title_screen = Title(self)
+        self.state_stack.append(self.title_screen)
+
     def reset_keys(self):
         for action in self.actions:
             self.actions[action] = False
