@@ -2,6 +2,7 @@ import math
 
 import pygame
 from states.state import State
+from states.game_world import Game_World
 from uis import Button
 
 
@@ -47,6 +48,9 @@ class Title(State):
 
     def update(self, delta_time, actions):
         self.title_time += delta_time
+        if actions["start"]:
+            new_state = Game_World(self.game)
+            new_state.enter_state()
         self.game.reset_keys()
 
     def draw_menu(self, display):
@@ -87,7 +91,7 @@ class Title(State):
         )
 
         if action == "play":
-            print("play")
+            self.game.actions['start'] = True
         elif action == "settings":
             print("settings")
         elif action == "exit":
