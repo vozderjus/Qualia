@@ -1,5 +1,5 @@
 import pygame
-
+import code.constants as constants
 display_surface = pygame.display.set_mode((constants.WINDOW_WIDTH, constants.WINDOW_HEIGHT))
 
 class SettingsScene():
@@ -7,4 +7,4 @@ class SettingsScene():
         pass
 
     def draw(self):
-        pygame.draw.rect(display_surface, (0, 0, 0), ((0, 0), (WINDOW_WIDTH, WINDOW_HEIGHT)))
+        pygame.draw.rect(display_surface, (0, 0, 0), ((0, 0), (constants.WINDOW_WIDTH, constants.WINDOW_HEIGHT)))
