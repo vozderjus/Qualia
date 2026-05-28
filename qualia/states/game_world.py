@@ -2,7 +2,7 @@ import os
 
 import pygame
 from states.state import State
-
+from states.pause_menu import PauseMenu
 
 class Game_World(State):
     def __init__(self, game):
@@ -10,6 +10,9 @@ class Game_World(State):
         self.player = Player(self.game)
     
     def update(self, delta_time, actions):
+        if actions['pause']:
+            new_state = PauseMenu(self.game)
+            new_state.enter_state()
         self.player.update(delta_time, actions)
 
     
@@ -37,8 +40,8 @@ class Player():
         direction_x = actions['right'] - actions['left']
         direction_y = actions['down'] - actions['up']
         # обновление позиции
-        self.position_x += 300 * delta_time * direction_x
-        self.position_y += 300 * delta_time * direction_y
+        self.position_x += 200 * delta_time * direction_x
+        self.position_y += 200 * delta_time * direction_y
     
     def render(self, display):
         display.blit(self.curr_image, (self.position_x, self.position_y))
