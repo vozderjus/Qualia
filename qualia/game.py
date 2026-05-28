@@ -91,10 +91,14 @@ class Game():
         self.prev_time = now 
     
     # рендер текста
-    def draw_text(self, surface, text, color, x, y):
-        text_surface = self.font.render(text, True, color)
-        text_rect = text_surface.get_rect()
-        text_rect.center = (x, y)
+    def draw_text(self, surface, text, color, x, y, size=None):
+        font = self.font
+        if size is not None:
+            font = pygame.font.Font(os.path.join("font", "PixelifySans-VariableFont_wght.ttf"), size)
+
+
+        text_surface = font.render(text, True, color)
+        text_rect = text_surface.get_rect(center=(x, y))
         surface.blit(text_surface, text_rect)
     
     # подгружаем все необходимые ассеты
