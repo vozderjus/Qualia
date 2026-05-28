@@ -1,29 +1,20 @@
 import os
 from uis import Button
 import pygame
+from enum import Enum
 
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 
-# MENU_BUTTONS = {
-#     "play": {
-#         "normal": Button(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 - 152, 
-#                          pygame.image.load("images/play_b_ph.png").convert(), 1),
-#         "active": Button(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 - 152, 
-#                          pygame.image.load("images/play_b_ph_active.png").convert(), 1)
-#     },
-#     "exit": {
-#         "normal": Button(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 152, 
-#                          pygame.image.load("images/exit_b_ph.png").convert_alpha(), 1),
-#         "active": Button(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2 + 152, 
-#                          pygame.image.load("images/exit_b_ph_active.png").convert_alpha(), 1)
-#     },
-#     "settings": {
-#         "normal": Button(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, 
-#                          pygame.image.load("images/settings_b_ph.png").convert(), 1),
-#         "active": Button(WINDOW_WIDTH / 2, WINDOW_HEIGHT / 2, 
-#                          pygame.image.load("images/settings_b_ph_active.png").convert(), 1)
-#     }
-# }
+# все что связано с игроком
+PLAYER_SIZE = 64
+PLAYER_SPEED = 200
+# все что связано с тайлингом
+TILE_SIZE = 32
+MIN_CORRIDOR_WIDTH = 3
+MIN_ROOM_WIDTH = 8
+MIN_ROOM_HEIGHT = 8
 
-# main_menu_img = pygame.image.load("images/main_menu_placeholder.png")
+class Tiles(Enum):
+    FLOOR = 1
+    WALL = 2
