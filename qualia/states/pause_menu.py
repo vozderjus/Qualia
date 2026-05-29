@@ -1,5 +1,8 @@
-import pygame, os
+import os
+
+import pygame
 from states.state import State
+
 
 class PauseMenu(State):
     def __init__(self, game):

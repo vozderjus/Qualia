@@ -1,7 +1,8 @@
 import os
-from uis import Button
-import pygame
 from enum import Enum
+
+import pygame
+from uis import Button
 
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
