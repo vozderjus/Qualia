@@ -1,10 +1,11 @@
 import os
 
 import pygame
-from states.state import State
-from states.pause_menu import PauseMenu
-from world.level import Level
 from constants import PLAYER_SIZE, PLAYER_SPEED
+from states.pause_menu import PauseMenu
+from states.state import State
+from world.level import Level
+
 
 class Game_World(State):
     def __init__(self, game):

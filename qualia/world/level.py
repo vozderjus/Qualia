@@ -1,6 +1,7 @@
 import pygame
 from constants import TILE_SIZE, Tiles
 
+
 class Level:
     FLOOR = Tiles.FLOOR
     WALL = Tiles.WALL
