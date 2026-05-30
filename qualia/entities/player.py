@@ -4,16 +4,21 @@ import pygame
 
 class Player():
     def __init__(self, game, level):
-        self.game = game
-        self.position_x, self.position_y = 64, 64
-        
         # ==== TODO ====
         self.current_frame, self.last_frame_update = 0, 0
         # ==== TODO ====
+
+        # получаем изображение игрока
         self.curr_image = pygame.image.load("images/main_character.png").convert_alpha()
         self.curr_image = pygame.transform.scale(self.curr_image, (PLAYER_SIZE, PLAYER_SIZE))
+
+        # работаем с rect
         self.rect = self.curr_image.get_rect(topleft=(PLAYER_SIZE, PLAYER_SIZE))
+
+        # доп импорты
         self.level = level
+        self.game = game
+        self.hp = 100
 
     def update(self, delta_time, actions):
         direction_x = actions['right'] - actions['left']
@@ -37,6 +42,15 @@ class Player():
         
         if not self.level.collides_with_wall(next_rect_y):
             self.rect.y = next_rect_y.y
+
+    def get_shot_origin(self):
+        return self.rect.center
+
+    def take_damage(self, damage):
+        self.hp -= damage
+
+    def is_dead(self):
+        return self.hp <= 0
 
     def render(self, display):
         display.blit(self.curr_image, self.rect)
