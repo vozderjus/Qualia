@@ -1,7 +1,6 @@
 import os
 from enum import Enum
 
-
 # === разрешение основной игры ===
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720

@@ -1,5 +1,6 @@
 import pygame
 
+
 class Enemy():
     def __init__(self, game, level, player, pos, image, hp, speed, fire_cooldown):
         # базовые импорты

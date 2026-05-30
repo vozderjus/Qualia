@@ -1,13 +1,16 @@
 import os
 
 import pygame
-from constants import PLAYER_SIZE, PLAYER_SPEED, PLAYER_BULLET_VELOCITY, PLAYER_FIRE_COOLDOWN, ENEMY_BULLET_VELOCITY
+from constants import (ENEMY_BULLET_VELOCITY, PLAYER_BULLET_VELOCITY,
+                       PLAYER_FIRE_COOLDOWN, PLAYER_SIZE, PLAYER_SPEED)
+from entities.bullet import Bullet
+from entities.orange_eye_enemy import OrangeEye
+from entities.player import Player
 from states.pause_menu import PauseMenu
 from states.state import State
 from world.level import Level
-from entities.player import Player
-from entities.bullet import Bullet
-from entities.orange_eye_enemy import OrangeEye
+
+
 class Game_World(State):
     def __init__(self, game):
         State.__init__(self, game)
@@ -20,7 +23,7 @@ class Game_World(State):
         self.time_since_shot = PLAYER_FIRE_COOLDOWN
         
         # враги!
-        self.enemies = [OrangeEye(self.game, self.level, self.player, (500, 300))]
+        self.enemies = [OrangeEye(self.game, self.level, self.player, (305, 335))]
 
     # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):
@@ -146,3 +149,7 @@ class Game_World(State):
 
         self.render_enemies(display)
         self.render_enemies_bullets(display)
+        
+        mouse_x, mouse_y = pygame.mouse.get_pos()
+        
+        self.game.draw_text(self.game.game_canvas, f"x: {mouse_x}, y: {mouse_y}", (255, 255, 255), 700, 700, 20)
