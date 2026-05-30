@@ -12,7 +12,7 @@ class Bullet():
         )
         self.pos = pygame.Vector2(pos)
         self.vel = pygame.Vector2(velocity)
-        self.rect = self.image.get_rect(center=self.pos)
+        self.rect = self.image.get_rect(center=self.pos) # используется в рендере
     
     def update(self, delta_time):
         self.pos += self.vel * delta_time

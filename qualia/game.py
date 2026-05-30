@@ -78,6 +78,7 @@ class Game():
                 if event.key == pygame.K_RETURN: # enter - начать игру
                     self.actions['start'] = False
 
+
             if event.type == pygame.MOUSEBUTTONUP: # отключение огня
                 self.actions['fire'] = False
     
