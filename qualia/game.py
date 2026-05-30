@@ -15,7 +15,7 @@ class Game():
         self.game_canvas = pygame.Surface((self.GAME_W, self.GAME_H))
         self.screen = pygame.display.set_mode((self.SCREEN_WIDTH, self.SCREEN_HEIGHT))
         self.running, self.playing = True, True
-        self.actions = {"left": False, "right": False, "up": False, "down": False, "interact": False, "pause": False, "inventory": False, "start": False}
+        self.actions = {"left": False, "right": False, "up": False, "down": False, "interact": False, "pause": False, "inventory": False, "start": False, "fire": False}
         self.dt, self.prev_time = 0, 0 #framerate independance
         self.state_stack = [] #game states management
         self.load_assets()
@@ -54,6 +54,9 @@ class Game():
                 if event.key == pygame.K_RETURN: # enter - начать игру
                     self.actions['start'] = True
 
+            if event.type == pygame.MOUSEBUTTONDOWN: # включение огня
+                self.actions['fire'] = True
+
             # обработка конца ввода
             if event.type == pygame.KEYUP:
                 if event.key == pygame.K_ESCAPE:
@@ -74,6 +77,9 @@ class Game():
                     self.actions['inventory'] = False
                 if event.key == pygame.K_RETURN: # enter - начать игру
                     self.actions['start'] = False
+
+            if event.type == pygame.MOUSEBUTTONUP: # отключение огня
+                self.actions['fire'] = False
     
     def update(self):
         self.state_stack[-1].update(self.dt, self.actions)
