@@ -1,6 +1,7 @@
 import pygame
 from constants import PLAYER_BULLET_SIZE, PLAYER_BULLET_VELOCITY
 
+
 class Bullet():
     def __init__(self, pos, velocity):
         self.image = pygame.Surface((PLAYER_BULLET_SIZE, PLAYER_BULLET_SIZE), pygame.SRCALPHA)

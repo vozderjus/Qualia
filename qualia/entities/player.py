@@ -1,5 +1,5 @@
-from constants import PLAYER_SIZE, PLAYER_SPEED
 import pygame
+from constants import PLAYER_SIZE, PLAYER_SPEED
 
 
 class Player():
