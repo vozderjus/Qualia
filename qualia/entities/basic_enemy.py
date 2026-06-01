@@ -9,7 +9,7 @@ class Enemy():
         self.player = player
 
         self.image = image
-        self.rect = self.image.get_rect(topleft=pos)
+        self.rect = self.image.get_rect(center=pos)
 
         self.hp = hp
         self.speed = speed

@@ -3,7 +3,7 @@ from constants import PLAYER_SIZE, PLAYER_SPEED
 
 
 class Player():
-    def __init__(self, game, level):
+    def __init__(self, game, level, spawn_center=None):
         # ==== TODO ====
         self.current_frame, self.last_frame_update = 0, 0
         # ==== TODO ====
@@ -14,6 +14,8 @@ class Player():
 
         # работаем с rect
         self.rect = self.curr_image.get_rect(topleft=(PLAYER_SIZE, PLAYER_SIZE))
+        if spawn_center is not None:
+            self.rect.center = spawn_center
 
         # доп импорты
         self.level = level
