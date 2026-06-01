@@ -1,21 +1,21 @@
 import os
 
 import pygame
-from constants import (ENEMY_BULLET_VELOCITY, PLAYER_BULLET_VELOCITY,
-                       PLAYER_FIRE_COOLDOWN, PLAYER_SIZE, PLAYER_SPEED)
+from constants import ENEMY_BULLET_VELOCITY, PLAYER_BULLET_VELOCITY, PLAYER_FIRE_COOLDOWN
 from entities.bullet import Bullet
 from entities.orange_eye_enemy import OrangeEye
 from entities.player import Player
 from states.pause_menu import PauseMenu
 from states.state import State
 from world.level import Level
-
+from world.bsp_generator import BSPGenerator
 
 class Game_World(State):
     def __init__(self, game):
         State.__init__(self, game)
-        self.level = Level()
-        self.player = Player(self.game, self.level)
+        generated_level = BSPGenerator(50, 40, max_depth=3, enemy_count=1).generate()
+        self.level = Level(generated_level.tiles)
+        self.player = Player(self.game, self.level, generated_level.player_spawn)
         
         # обработка пуль и их кулдауна
         self.player_bullets = []
@@ -23,7 +23,10 @@ class Game_World(State):
         self.time_since_shot = PLAYER_FIRE_COOLDOWN
         
         # враги!
-        self.enemies = [OrangeEye(self.game, self.level, self.player, (305, 335))]
+        self.enemies = [
+            OrangeEye(self.game, self.level, self.player, spawn)
+            for spawn in generated_level.enemy_spawns
+        ]
 
     # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):

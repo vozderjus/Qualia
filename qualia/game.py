@@ -95,7 +95,7 @@ class Game():
     def get_dt(self):
         now = time.time()
         self.dt = now - self.prev_time
-        self.prev_time = now 
+        self.prev_time = now
     
     # рендер текста
     def draw_text(self, surface, text, color, x, y, size=None):

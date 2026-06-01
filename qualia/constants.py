@@ -20,8 +20,8 @@ ORANGE_EYE_COOLDOWN = 1.0
 # === все что связано с тайлингом ===
 TILE_SIZE = 32
 MIN_CORRIDOR_WIDTH = 3
-MIN_ROOM_WIDTH = 8
-MIN_ROOM_HEIGHT = 8
+MIN_ROOM_SIZE = 8
+MIN_AREA_SIZE = 10
 
 class Tiles(Enum):
     FLOOR = 1
