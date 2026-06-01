@@ -28,8 +28,8 @@ class Level:
             [2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2, 2],
         ]
         
-        self.floor_color = (40, 40, 40)
-        self.wall_color = (110, 110, 110)
+        self.floor_tile = pygame.image.load("images/floor_tile1.png").convert_alpha()
+        self.wall_tile = pygame.image.load("images/wall_tile.png").convert_alpha()
     
     def render(self, display):
         for row_index, row in enumerate(self.tiles):
@@ -39,18 +39,10 @@ class Level:
                 
                 # отрисовка пола
                 if tile == self.FLOOR.value:
-                    pygame.draw.rect(
-                        display,
-                        self.floor_color,
-                        (x, y, self.tile_size, self.tile_size)
-                    )
+                    display.blit(self.floor_tile, (x, y))
                 # отрисовка стен
                 elif tile == self.WALL.value:
-                    pygame.draw.rect(
-                        display,
-                        self.wall_color,
-                        (x, y, self.tile_size, self.tile_size)
-                    )
+                    display.blit(self.wall_tile, (x, y))
     
     # функция для проверки коллизий
     def collides_with_wall(self, rect):
