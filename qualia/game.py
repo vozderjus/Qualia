@@ -8,6 +8,8 @@ from states.title import Title
 pygame.init()
 pygame.display.set_caption("Qualia")
 
+
+
 class Game():
     def __init__(self):
         self.GAME_W, self.GAME_H = 1280, 720
@@ -18,6 +20,7 @@ class Game():
         self.actions = {"left": False, "right": False, "up": False, "down": False, "interact": False, "pause": False, "inventory": False, "start": False, "fire": False}
         self.dt, self.prev_time = 0, 0 #framerate independance
         self.state_stack = [] #game states management
+        self.clock = pygame.time.Clock()
         self.load_assets()
         self.load_states()
 
@@ -84,11 +87,13 @@ class Game():
     
     def update(self):
         self.state_stack[-1].update(self.dt, self.actions)
+        self.clock.tick(60)
     
     # рендер наших сцен
     def render(self):
         self.state_stack[-1].render(self.game_canvas)
         self.screen.blit(pygame.transform.scale(self.game_canvas, (self.SCREEN_WIDTH, self.SCREEN_HEIGHT)), (0, 0))
+        self.draw_text(self.screen, f"{int(self.clock.get_fps())}", (255, 255, 255), self.GAME_W / 2, self.GAME_H - 50, 20)
         pygame.display.flip()
     
     # вычисляем разницу между нынешним кадром и предыдущим кадром, чтобы 

@@ -54,5 +54,11 @@ class Player():
     def is_dead(self):
         return self.hp <= 0
 
-    def render(self, display):
-        display.blit(self.curr_image, self.rect)
+    def render(self, display, camera=None):
+        if camera is None:
+            display.blit(self.curr_image, self.rect)
+            return
+
+        screen_rect = camera.apply_rect(self.rect)
+        scaled_image = pygame.transform.scale(self.curr_image, screen_rect.size)
+        display.blit(scaled_image, screen_rect)

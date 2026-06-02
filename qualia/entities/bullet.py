@@ -1,5 +1,5 @@
 import pygame
-from constants import PLAYER_BULLET_SIZE, PLAYER_BULLET_VELOCITY
+from constants import PLAYER_BULLET_SIZE
 
 
 class Bullet():
@@ -19,5 +19,11 @@ class Bullet():
         self.pos += self.vel * delta_time
         self.rect.center = (int(self.pos.x), int(self.pos.y))
     
-    def render(self, display):
-        display.blit(self.image, self.rect)
+    def render(self, display, camera=None):
+        if camera is None:
+            display.blit(self.image, self.rect)
+            return
+
+        screen_rect = camera.apply_rect(self.rect)
+        scaled_image = pygame.transform.scale(self.image, screen_rect.size)
+        display.blit(scaled_image, screen_rect)
