@@ -9,24 +9,19 @@ class Level:
     def __init__(self, tiles):
         self.tile_size = TILE_SIZE
         
-        # Базовая тестовая арена с широкими проходами под игрока 64x64.
+        # Создание уровня, то есть тут мы подключаем BSP
         self.tiles = tiles
         
+        # картиночки для пола и стен (TODO - bitmap с полом)
         self.floor_tile = pygame.image.load("images/floor_tile1.png").convert_alpha()
         self.wall_tile = pygame.image.load("images/wall_tile.png").convert_alpha()
-    
-    def render(self, display):
-        for row_index, row in enumerate(self.tiles):
-            for col_index, tile in enumerate(row):
-                x = col_index * self.tile_size
-                y = row_index * self.tile_size
-                
-                # отрисовка пола
-                if tile == self.FLOOR.value:
-                    display.blit(self.floor_tile, (x, y))
-                # отрисовка стен
-                elif tile == self.WALL.value:
-                    display.blit(self.wall_tile, (x, y))
+        self._cached_zoom = None
+        self._scaled_floor_tile = self.floor_tile
+        self._scaled_wall_tile = self.wall_tile
+
+        # ширина и высота уровня в пикселях
+        self.pixel_width = len(self.tiles[0]) * self.tile_size
+        self.pixel_height = len(self.tiles) * self.tile_size
     
     # функция для проверки коллизий
     def collides_with_wall(self, rect):
@@ -43,3 +38,45 @@ class Level:
                     return True
 
         return False
+
+    def update_scaled_tiles(self, zoom):
+        if self._cached_zoom == zoom:
+            return
+
+        scaled_size = max(1, int(self.tile_size * zoom))
+        self._scaled_floor_tile = pygame.transform.scale(
+            self.floor_tile,
+            (scaled_size, scaled_size),
+        )
+        self._scaled_wall_tile = pygame.transform.scale(
+            self.wall_tile,
+            (scaled_size, scaled_size),
+        )
+        self._cached_zoom = zoom
+
+    def render(self, display, camera):
+        self.update_scaled_tiles(camera.zoom)
+
+        rows = len(self.tiles)
+        cols = len(self.tiles[0])
+        start_col, end_col, start_row, end_row = camera.get_visible_range(
+            self.tile_size,
+            cols,
+            rows,
+        )
+
+        for row_index in range(start_row, end_row):
+            for col_index in range(start_col, end_col):
+                tile = self.tiles[row_index][col_index]
+                
+                world_x = col_index * self.tile_size
+                world_y = row_index * self.tile_size
+                
+                screen_x, screen_y = camera.apply(world_x, world_y)
+
+                # отрисовка пола
+                if tile == self.FLOOR.value:
+                    display.blit(self._scaled_floor_tile, (int(screen_x), int(screen_y)))
+                # отрисовка стен
+                elif tile == self.WALL.value:
+                    display.blit(self._scaled_wall_tile, (int(screen_x), int(screen_y)))

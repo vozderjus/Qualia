@@ -1,7 +1,7 @@
+import random
 from dataclasses import dataclass
 
-from constants import MIN_CORRIDOR_WIDTH, MIN_ROOM_SIZE, MIN_AREA_SIZE, TILE_SIZE, Tiles
-import random
+from constants import MIN_AREA_SIZE, MIN_CORRIDOR_WIDTH, MIN_ROOM_SIZE, TILE_SIZE, Tiles
 
 
 @dataclass

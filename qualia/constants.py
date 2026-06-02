@@ -4,6 +4,7 @@ from enum import Enum
 # === разрешение основной игры ===
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
+CAMERA_ZOOM = 1.5
 
 
 # === все что связано с игроком ===

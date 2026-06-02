@@ -35,5 +35,11 @@ class Enemy():
     def get_shot_origin(self):
         return self.rect.center
 
-    def render(self, display):
-        display.blit(self.image, self.rect)
+    def render(self, display, camera=None):
+        if camera is None:
+            display.blit(self.image, self.rect)
+            return
+
+        screen_rect = camera.apply_rect(self.rect)
+        scaled_image = pygame.transform.scale(self.image, screen_rect.size)
+        display.blit(scaled_image, screen_rect)
