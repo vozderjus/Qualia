@@ -1,12 +1,13 @@
 import os
 
 import pygame
-from constants import (CAMERA_ZOOM, ENEMY_BULLET_VELOCITY, PLAYER_BULLET_VELOCITY,
-                       PLAYER_FIRE_COOLDOWN)
+from constants import CAMERA_ZOOM, PLAYER_BULLET_VELOCITY, PLAYER_FIRE_COOLDOWN
 from entities.bullet import Bullet
 from entities.camera import Camera
+from entities.sniper_eye_enemy import SniperEye
 from entities.orange_eye_enemy import OrangeEye
 from entities.player import Player
+from entities.shotgun_eye_enemy import ShotgunEye
 from states.pause_menu import PauseMenu
 from states.state import State
 from world.bsp_generator import BSPGenerator
@@ -31,10 +32,10 @@ class Game_World(State):
         self.time_since_shot = PLAYER_FIRE_COOLDOWN
         
         # враги!
-        self.enemies = [
-            OrangeEye(self.game, self.level, self.player, spawn)
-            for spawn in generated_level.enemy_spawns
-        ]
+        self.enemies = []
+        for index, spawn in enumerate(generated_level.enemy_spawns):
+            enemy_class = [OrangeEye, ShotgunEye, SniperEye][index % 3]
+            self.enemies.append(enemy_class(self.game, self.level, self.player, spawn))
 
     # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):
@@ -81,10 +82,12 @@ class Game_World(State):
             shot_data = enemy.update(delta_time)
 
             if shot_data is not None:
-                self.spawn_enemy_bullet(
-                    shot_data['origin'],
-                    shot_data['direction'],
-                )
+                for direction in shot_data['directions']:
+                    self.spawn_enemy_bullet(
+                        shot_data['origin'],
+                        direction,
+                        shot_data['speed'],
+                    )
 
             if enemy.is_dead():
                 self.enemies.remove(enemy)
@@ -132,8 +135,8 @@ class Game_World(State):
         new_bullet = Bullet(spawn_point, velocity)
         self.player_bullets.append(new_bullet)
 
-    def spawn_enemy_bullet(self, origin, direction):
-        velocity = direction * ENEMY_BULLET_VELOCITY
+    def spawn_enemy_bullet(self, origin, direction, speed):
+        velocity = direction * speed
         bullet = Bullet(origin, velocity)
         self.enemies_bullets.append(bullet)
 
