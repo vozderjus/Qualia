@@ -15,6 +15,7 @@ class Level:
         # картиночки для пола и стен (TODO - bitmap с полом)
         self.floor_tile = pygame.image.load("images/floor_tile1.png").convert_alpha()
         self.wall_tile = pygame.image.load("images/wall_tile.png").convert_alpha()
+        # зум, увеличение тайлов под зум
         self._cached_zoom = None
         self._scaled_floor_tile = self.floor_tile
         self._scaled_wall_tile = self.wall_tile
@@ -39,7 +40,43 @@ class Level:
 
         return False
 
+    # вспомогательный метод для расчета линии взгляда
+    def world_point_to_tile(self, x, y):
+        return int(x // self.tile_size), int(y // self.tile_size)
+
+    # линия взгляда врагов
+    def has_line_of_sight(self, start, end):
+        x0, y0 = self.world_point_to_tile(*start)
+        x1, y1 = self.world_point_to_tile(*end)
+        
+        dx = abs(x1 - x0)
+        dy = abs(y1 - y0)
+        sx = 1 if x0 < x1 else -1
+        sy = 1 if y0 < y1 else -1
+        err = dx - dy
+        
+        while True:
+            if y0 < 0 or y0 >= len(self.tiles):
+                return False
+            if x0 < 0 or x0 >= len(self.tiles[0]):
+                return False
+            if self.tiles[y0][x0] == self.WALL.value:
+                return False
+            
+            if x0 == x1 and y0 == y1:
+                return True
+            
+            e2 = 2 * err
+            if e2 > -dy:
+                err -= dy
+                x0 += sx
+            if e2 < dx:
+                err += dx
+                y0 += sy
+
+    # применение зума
     def update_scaled_tiles(self, zoom):
+        # если зум уже применен - не делаем ничего
         if self._cached_zoom == zoom:
             return
 
