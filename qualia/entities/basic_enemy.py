@@ -6,11 +6,15 @@ import pygame
 class EnemyContext:
     enemy_center: pygame.Vector2
     player_center: pygame.Vector2
-    offset_to_player: pygame.Vector2
-    distance_to_player: float
-    direction_to_player: pygame.Vector2
-    angle_to_player: float
+    target_center: pygame.Vector2
+    last_known_player_position: pygame.Vector2
+    offset_to_target: pygame.Vector2
+    distance_to_target: float
+    direction_to_target: pygame.Vector2
+    angle_to_target: float
     has_line_of_sight: bool
+    has_detected_player: bool
+    player_in_awareness_zone: bool
     can_shoot: bool
     in_preferred_range: bool
     preferred_min_range: float
@@ -42,42 +46,67 @@ class Enemy():
         self.preferred_max_range = 0
         self.contact_damage = 1
         self.room_id = None
-        self.role = role        
+        self.role = role
+        self.spawn_center = pygame.Vector2(pos)
+        self.awareness_radius = 420
+        self.has_detected_player = False
+        self.last_known_player_position = pygame.Vector2(self.rect.center)
 
     # сбор контекста (позиция игрока, расстояние до игрока, линия взгляда, готовность к выстрелу)
     def build_context(self):
         enemy_center = pygame.Vector2(self.rect.center)
         player_center = pygame.Vector2(self.player.rect.center)
 
-        offset_to_player = player_center - enemy_center
-        distance_to_player = offset_to_player.length()
-
-        if distance_to_player > 0:
-            direction_to_player = offset_to_player.normalize()
-            angle_to_player = direction_to_player.as_polar()[1]
-        else:
-            direction_to_player = pygame.Vector2()
-            angle_to_player = 0.0
-
         has_line_of_sight = self.level.has_line_of_sight(
             self.rect.center,
             self.player.rect.center,
         )
+        player_in_awareness_zone = (
+            player_center.distance_to(self.spawn_center) <= self.awareness_radius
+        )
+
+        if has_line_of_sight and player_in_awareness_zone:
+            self.has_detected_player = True
+            self.last_known_player_position = player_center.copy()
+        elif not player_in_awareness_zone:
+            self.has_detected_player = False
+
+        if self.has_detected_player:
+            if has_line_of_sight:
+                target_center = player_center
+            else:
+                target_center = self.last_known_player_position.copy()
+        else:
+            target_center = enemy_center.copy()
+
+        offset_to_target = target_center - enemy_center
+        distance_to_target = offset_to_target.length()
+
+        if distance_to_target > 0:
+            direction_to_target = offset_to_target.normalize()
+            angle_to_target = direction_to_target.as_polar()[1]
+        else:
+            direction_to_target = pygame.Vector2()
+            angle_to_target = 0.0
 
         can_shoot = self.can_shoot()
 
         in_preferred_range = (
-            self.preferred_min_range <= distance_to_player <= self.preferred_max_range
+            self.preferred_min_range <= distance_to_target <= self.preferred_max_range
         )
 
         return EnemyContext(
             enemy_center=enemy_center,
             player_center=player_center,
-            offset_to_player=offset_to_player,
-            distance_to_player=distance_to_player,
-            direction_to_player=direction_to_player,
-            angle_to_player=angle_to_player,
+            target_center=target_center,
+            last_known_player_position=self.last_known_player_position.copy(),
+            offset_to_target=offset_to_target,
+            distance_to_target=distance_to_target,
+            direction_to_target=direction_to_target,
+            angle_to_target=angle_to_target,
             has_line_of_sight=has_line_of_sight,
+            has_detected_player=self.has_detected_player,
+            player_in_awareness_zone=player_in_awareness_zone,
             can_shoot=can_shoot,
             in_preferred_range=in_preferred_range,
             preferred_min_range=self.preferred_min_range,
@@ -100,6 +129,12 @@ class Enemy():
         next_rect_y.y += int(move_y)
         if not self.level.collides_with_wall(next_rect_y):
             self.rect.y = next_rect_y.y
+
+    def request_attack(self, context):
+        if self.attack_behavior is None:
+            return None
+
+        return self.attack_behavior.get_attack_data(self, context)
         
     def update_fire_timer(self, delta_time):
         self.time_since_shot += delta_time

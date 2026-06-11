@@ -46,33 +46,36 @@ class Level:
 
     # линия взгляда врагов
     def has_line_of_sight(self, start, end):
-        x0, y0 = self.world_point_to_tile(*start)
-        x1, y1 = self.world_point_to_tile(*end)
-        
-        dx = abs(x1 - x0)
-        dy = abs(y1 - y0)
-        sx = 1 if x0 < x1 else -1
-        sy = 1 if y0 < y1 else -1
-        err = dx - dy
-        
-        while True:
-            if y0 < 0 or y0 >= len(self.tiles):
+        start_vec = pygame.Vector2(start)
+        end_vec = pygame.Vector2(end)
+        ray = end_vec - start_vec
+        distance = ray.length()
+
+        if distance == 0:
+            return True
+
+        direction = ray.normalize()
+        step_size = max(1, self.tile_size // 4)
+        steps = int(distance // step_size)
+
+        for step in range(steps + 1):
+            sample_point = start_vec + direction * (step * step_size)
+            tile_x, tile_y = self.world_point_to_tile(sample_point.x, sample_point.y)
+
+            if tile_y < 0 or tile_y >= len(self.tiles):
                 return False
-            if x0 < 0 or x0 >= len(self.tiles[0]):
+            if tile_x < 0 or tile_x >= len(self.tiles[0]):
                 return False
-            if self.tiles[y0][x0] == self.WALL.value:
+            if self.tiles[tile_y][tile_x] == self.WALL.value:
                 return False
-            
-            if x0 == x1 and y0 == y1:
-                return True
-            
-            e2 = 2 * err
-            if e2 > -dy:
-                err -= dy
-                x0 += sx
-            if e2 < dx:
-                err += dx
-                y0 += sy
+
+        end_tile_x, end_tile_y = self.world_point_to_tile(end_vec.x, end_vec.y)
+        if end_tile_y < 0 or end_tile_y >= len(self.tiles):
+            return False
+        if end_tile_x < 0 or end_tile_x >= len(self.tiles[0]):
+            return False
+
+        return self.tiles[end_tile_y][end_tile_x] != self.WALL.value
 
     # применение зума
     def update_scaled_tiles(self, zoom):

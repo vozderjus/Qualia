@@ -1,10 +1,11 @@
 import pygame
+
 from constants import ORANGE_EYE_COOLDOWN, ORANGE_EYE_HP, ORANGE_EYE_SPEED
 from entities.basic_enemy import Enemy
-from entities.enemies_behavior import ChaseMovement, SingleShotAttack
+from entities.enemies_behavior import ConeShotAttack, KeepDistanceMovement
 
 
-class OrangeEye(Enemy):
+class ShotgunEye(Enemy):
     def __init__(self, game, level, player, pos):
         super().__init__(
             game=game,
@@ -12,17 +13,17 @@ class OrangeEye(Enemy):
             player=player,
             pos=pos,
             image=pygame.image.load("images/orange_eye_enemy.png").convert_alpha(),
-            hp=ORANGE_EYE_HP,
-            speed=ORANGE_EYE_SPEED,
-            fire_cooldown=ORANGE_EYE_COOLDOWN,
-            role='pressure'
+            hp=ORANGE_EYE_HP + 1,
+            speed=ORANGE_EYE_SPEED - 30,
+            fire_cooldown=ORANGE_EYE_COOLDOWN + 0.35,
+            role='burst'
         )
-        self.movement_behavior = ChaseMovement()
-        self.attack_behavior = SingleShotAttack()
-        self.preferred_min_range = 140
-        self.preferred_max_range = 260
+        self.movement_behavior = KeepDistanceMovement()
+        self.attack_behavior = ConeShotAttack()
+        self.preferred_min_range = 160
+        self.preferred_max_range = 300
         self.phase = 'idle'
-    
+
     def update(self, delta_time):
         self.update_fire_timer(delta_time)
 
