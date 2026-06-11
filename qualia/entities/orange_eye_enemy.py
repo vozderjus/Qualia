@@ -1,8 +1,7 @@
-import math
-
 import pygame
 from constants import ORANGE_EYE_COOLDOWN, ORANGE_EYE_HP, ORANGE_EYE_SPEED
 from entities.basic_enemy import Enemy
+from entities.enemies_behavior import ChaseMovement
 
 
 class OrangeEye(Enemy):
@@ -16,36 +15,31 @@ class OrangeEye(Enemy):
             hp=ORANGE_EYE_HP,
             speed=ORANGE_EYE_SPEED,
             fire_cooldown=ORANGE_EYE_COOLDOWN,
+            role='pressure'
         )
-        
-        self.orbit_radius = 80
-        self.orbit_center = pygame.Vector2(self.rect.centerx - self.orbit_radius, self.rect.centery)
-        self.orbit_angle = 0.0
+        self.movement_behavior = ChaseMovement()
+        self.preferred_min_range = 140
+        self.preferred_max_range = 260
+        self.phase = 'idle'
     
     def update(self, delta_time):
         self.update_fire_timer(delta_time)
-        
-        angular_speed = self.speed / self.orbit_radius
-        self.orbit_angle += angular_speed * delta_time
-        
-        new_centerx = self.orbit_center.x + math.cos(self.orbit_angle) * self.orbit_radius
-        new_centery = self.orbit_center.y + math.sin(self.orbit_angle) * self.orbit_radius
-        
-        self.rect.center = (round(new_centerx), round(new_centery))
 
-        direction = pygame.Vector2(
-            self.player.rect.centerx - self.rect.centerx,
-            self.player.rect.centery - self.rect.centery,
-        )
-        
-        if direction.length_squared() > 0:
-            direction = direction.normalize()
-        
-        if self.can_shoot() and direction.length_squared() > 0:
+        context = self.build_context()
+        move_vector = self.movement_behavior.get_movement_vector(self, context)
+        self.move_with_collision(move_vector, delta_time)
+        context = self.build_context()
+
+        if (
+            context.can_shoot
+            and context.has_line_of_sight
+            and context.in_preferred_range
+            and context.distance_to_player > 0
+        ):
             self.reset_shot_timer()
             return {
                 'origin': self.get_shot_origin(),
-                'direction': direction,
+                'direction': context.direction_to_player,
             }
 
         return None

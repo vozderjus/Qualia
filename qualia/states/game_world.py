@@ -18,7 +18,7 @@ class Game_World(State):
     def __init__(self, game):
         # эээ основные импорты, создаие импорта и тп
         State.__init__(self, game)
-        generated_level = BSPGenerator(50, 40, max_depth=3, enemy_count=1).generate()
+        generated_level = BSPGenerator(50, 40, max_depth=3, enemy_count=5).generate()
         self.level = Level(generated_level.tiles)
         self.player = Player(self.game, self.level, generated_level.player_spawn)
         
