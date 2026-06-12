@@ -5,11 +5,17 @@ from constants import MIN_AREA_SIZE, MIN_CORRIDOR_WIDTH, MIN_ROOM_SIZE, TILE_SIZ
 
 
 @dataclass
+class EnemySpawn:
+    room_id: int
+    position: tuple[int, int]
+
+
+@dataclass
 class GeneratedLevel:
     tiles: list[list[int]]
     rooms: list[tuple[int, int, int, int]]
     player_spawn: tuple[int, int]
-    enemy_spawns: list[tuple[int, int]]
+    enemy_spawns: list[EnemySpawn]
 
 
 class BSPNode():
@@ -202,10 +208,16 @@ class BSPGenerator:
         if len(rooms) <= 1:
             return []
 
-        available_rooms = rooms[1:]
+        available_rooms = list(enumerate(rooms[1:], start=1))
         random.shuffle(available_rooms)
         selected_rooms = available_rooms[:self.enemy_count]
-        return [self.room_to_world_center(room) for room in selected_rooms]
+        return [
+            EnemySpawn(
+                room_id=room_id,
+                position=self.room_to_world_center(room),
+            )
+            for room_id, room in selected_rooms
+        ]
 
     def generate(self):
         grid = [

@@ -51,11 +51,17 @@ class Enemy():
         self.awareness_radius = 420
         self.has_detected_player = False
         self.last_known_player_position = pygame.Vector2(self.rect.center)
+        self.is_spawning = True
+        self.spawn_duration = 0.45
+        self.spawn_timer = self.spawn_duration
+        self.detection_telegraph_duration = 0.5
+        self.detection_telegraph_timer = 0.0
 
     # сбор контекста (позиция игрока, расстояние до игрока, линия взгляда, готовность к выстрелу)
     def build_context(self):
         enemy_center = pygame.Vector2(self.rect.center)
         player_center = pygame.Vector2(self.player.rect.center)
+        was_detected_player = self.has_detected_player
 
         has_line_of_sight = self.level.has_line_of_sight(
             self.rect.center,
@@ -70,6 +76,9 @@ class Enemy():
             self.last_known_player_position = player_center.copy()
         elif not player_in_awareness_zone:
             self.has_detected_player = False
+
+        if self.has_detected_player and not was_detected_player:
+            self.detection_telegraph_timer = self.detection_telegraph_duration
 
         if self.has_detected_player:
             if has_line_of_sight:
@@ -135,6 +144,75 @@ class Enemy():
             return None
 
         return self.attack_behavior.get_attack_data(self, context)
+
+    def update_spawn_state(self, delta_time):
+        if not self.is_spawning:
+            return False
+
+        self.spawn_timer = max(0.0, self.spawn_timer - delta_time)
+
+        if self.spawn_timer == 0.0:
+            self.is_spawning = False
+
+        return self.is_spawning
+
+    def is_combat_ready(self):
+        return not self.is_spawning
+
+    def render_spawn_effect(self, display, anchor_rect, scaled_image):
+        if not self.is_spawning:
+            display.blit(scaled_image, anchor_rect)
+            return
+
+        progress = 1.0 - (self.spawn_timer / self.spawn_duration)
+        alpha = max(60, int(255 * progress))
+        scale_factor = 0.55 + 0.45 * progress
+        spawn_width = max(1, int(anchor_rect.width * scale_factor))
+        spawn_height = max(1, int(anchor_rect.height * scale_factor))
+        spawn_image = pygame.transform.scale(
+            scaled_image,
+            (spawn_width, spawn_height),
+        )
+        spawn_image.set_alpha(alpha)
+        spawn_rect = spawn_image.get_rect(center=anchor_rect.center)
+
+        ring_radius = max(anchor_rect.width, anchor_rect.height) * (0.35 + 0.45 * progress)
+        ring_width = max(2, anchor_rect.width // 16)
+        ring_color = (255, 210, 120)
+
+        display.blit(spawn_image, spawn_rect)
+        pygame.draw.circle(
+            display,
+            ring_color,
+            anchor_rect.center,
+            int(ring_radius),
+            ring_width,
+        )
+
+    def update_detection_telegraph(self, delta_time):
+        if self.detection_telegraph_timer > 0:
+            self.detection_telegraph_timer = max(
+                0.0,
+                self.detection_telegraph_timer - delta_time,
+            )
+
+    def render_detection_telegraph(self, display, anchor_rect):
+        if self.detection_telegraph_timer <= 0:
+            return
+
+        color = (255, 90, 90)
+        line_height = max(8, anchor_rect.height // 3)
+        line_width = max(2, anchor_rect.width // 10)
+        dot_radius = max(2, anchor_rect.width // 12)
+        center_x = anchor_rect.centerx
+        top_y = anchor_rect.top - max(10, anchor_rect.height // 5)
+
+        line_rect = pygame.Rect(0, 0, line_width, line_height)
+        line_rect.midtop = (center_x, top_y)
+        dot_center = (center_x, line_rect.bottom + dot_radius + 1)
+
+        pygame.draw.rect(display, color, line_rect, border_radius=max(1, line_width // 2))
+        pygame.draw.circle(display, color, dot_center, dot_radius)
         
     def update_fire_timer(self, delta_time):
         self.time_since_shot += delta_time
@@ -156,9 +234,11 @@ class Enemy():
 
     def render(self, display, camera=None):
         if camera is None:
-            display.blit(self.image, self.rect)
+            self.render_spawn_effect(display, self.rect, self.image.copy())
+            self.render_detection_telegraph(display, self.rect)
             return
 
         screen_rect = camera.apply_rect(self.rect)
         scaled_image = pygame.transform.scale(self.image, screen_rect.size)
-        display.blit(scaled_image, screen_rect)
+        self.render_spawn_effect(display, screen_rect, scaled_image)
+        self.render_detection_telegraph(display, screen_rect)

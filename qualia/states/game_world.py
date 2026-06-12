@@ -22,6 +22,8 @@ class Game_World(State):
         generated_level = BSPGenerator(50, 40, max_depth=3, enemy_count=5).generate()
         self.level = Level(generated_level.tiles)
         self.player = Player(self.game, self.level, generated_level.player_spawn)
+        self.rooms = generated_level.rooms
+        self.current_room_id = None
         
         # камера
         self.camera = Camera(self.game.GAME_W, self.game.GAME_H, CAMERA_ZOOM)
@@ -33,9 +35,51 @@ class Game_World(State):
         
         # враги!
         self.enemies = []
-        for index, spawn in enumerate(generated_level.enemy_spawns):
+        self.pending_enemy_spawns = []
+        for index, enemy_spawn in enumerate(generated_level.enemy_spawns):
             enemy_class = [OrangeEye, ShotgunEye, SniperEye][index % 3]
-            self.enemies.append(enemy_class(self.game, self.level, self.player, spawn))
+            self.pending_enemy_spawns.append(
+                {
+                    'room_id': enemy_spawn.room_id,
+                    'position': enemy_spawn.position,
+                    'enemy_class': enemy_class,
+                }
+            )
+
+    def get_room_world_rect(self, room):
+        room_x, room_y, room_w, room_h = room
+        return pygame.Rect(
+            room_x * self.level.tile_size,
+            room_y * self.level.tile_size,
+            room_w * self.level.tile_size,
+            room_h * self.level.tile_size,
+        )
+
+    def get_room_id_for_point(self, point):
+        for room_id, room in enumerate(self.rooms):
+            if self.get_room_world_rect(room).collidepoint(point):
+                return room_id
+
+        return None
+
+    def spawn_room_enemies(self, room_id):
+        if room_id is None:
+            return
+
+        for spawn_data in self.pending_enemy_spawns[:]:
+            if spawn_data['room_id'] != room_id:
+                continue
+
+            enemy_class = spawn_data['enemy_class']
+            enemy = enemy_class(
+                self.game,
+                self.level,
+                self.player,
+                spawn_data['position'],
+            )
+            enemy.room_id = room_id
+            self.enemies.append(enemy)
+            self.pending_enemy_spawns.remove(spawn_data)
 
     # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):
@@ -45,6 +89,11 @@ class Game_World(State):
             return
 
         self.player.update(delta_time, actions)
+        player_room_id = self.get_room_id_for_point(self.player.rect.center)
+        if player_room_id != self.current_room_id:
+            self.current_room_id = player_room_id
+            self.spawn_room_enemies(player_room_id)
+
         self.time_since_shot += delta_time
         self.camera.smooth_follow(
             self.player.rect.centerx,
@@ -144,6 +193,9 @@ class Game_World(State):
     def handle_player_to_enemy_collisions(self):
         for player_bullet in self.player_bullets[:]:
             for enemy in self.enemies[:]:
+                if not enemy.is_combat_ready():
+                    continue
+
                 if player_bullet.rect.colliderect(enemy.rect):
                     enemy.take_damage(1)
 
