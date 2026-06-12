@@ -16,6 +16,8 @@ class GeneratedLevel:
     rooms: list[tuple[int, int, int, int]]
     player_spawn: tuple[int, int]
     enemy_spawns: list[EnemySpawn]
+    exit_spawn: tuple[int, int] | None
+    exit_room_id: int | None
 
 
 class BSPNode():
@@ -204,11 +206,40 @@ class BSPGenerator:
 
         return self.room_to_world_center(rooms[0])
 
-    def choose_enemy_spawns(self, rooms):
+    def choose_exit(self, rooms):
+        if not rooms:
+            return None, None
+
+        if len(rooms) == 1:
+            return 0, self.room_to_world_center(rooms[0])
+
+        start_room = rooms[0]
+        start_center_x = start_room[0] + start_room[2] // 2
+        start_center_y = start_room[1] + start_room[3] // 2
+
+        farthest_room_id, farthest_room = max(
+            enumerate(rooms[1:], start=1),
+            key=lambda item: (
+                (item[1][0] + item[1][2] // 2 - start_center_x) ** 2
+                + (item[1][1] + item[1][3] // 2 - start_center_y) ** 2
+            ),
+        )
+
+        return farthest_room_id, self.room_to_world_center(farthest_room)
+
+    def choose_enemy_spawns(self, rooms, exit_room_id=None):
         if len(rooms) <= 1:
             return []
 
-        available_rooms = list(enumerate(rooms[1:], start=1))
+        available_rooms = [
+            (room_id, room)
+            for room_id, room in enumerate(rooms[1:], start=1)
+            if room_id != exit_room_id
+        ]
+
+        if not available_rooms:
+            available_rooms = list(enumerate(rooms[1:], start=1))
+
         random.shuffle(available_rooms)
         selected_rooms = available_rooms[:self.enemy_count]
         return [
@@ -232,11 +263,14 @@ class BSPGenerator:
         root.connect_children(grid, Tiles.FLOOR.value)
         rooms = root.collect_rooms()
         player_spawn = self.choose_player_spawn(rooms)
-        enemy_spawns = self.choose_enemy_spawns(rooms)
+        exit_room_id, exit_spawn = self.choose_exit(rooms)
+        enemy_spawns = self.choose_enemy_spawns(rooms, exit_room_id)
 
         return GeneratedLevel(
             tiles=grid,
             rooms=rooms,
             player_spawn=player_spawn,
             enemy_spawns=enemy_spawns,
+            exit_spawn=exit_spawn,
+            exit_room_id=exit_room_id,
         )

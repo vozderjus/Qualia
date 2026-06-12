@@ -1,9 +1,10 @@
 import os
 
 import pygame
-from constants import CAMERA_ZOOM, PLAYER_BULLET_VELOCITY, PLAYER_FIRE_COOLDOWN
+from constants import CAMERA_ZOOM, PLAYER_BULLET_VELOCITY, PLAYER_FIRE_COOLDOWN, FLOOR_CONFIGS
 from entities.bullet import Bullet
 from entities.camera import Camera
+from entities.level_exit import LevelExit
 from entities.sniper_eye_enemy import SniperEye
 from entities.orange_eye_enemy import OrangeEye
 from entities.player import Player
@@ -19,14 +20,13 @@ class Game_World(State):
     def __init__(self, game):
         # эээ основные импорты, создаие импорта и тп
         State.__init__(self, game)
-        generated_level = BSPGenerator(50, 40, max_depth=3, enemy_count=5).generate()
-        self.level = Level(generated_level.tiles)
-        self.player = Player(self.game, self.level, generated_level.player_spawn)
-        self.rooms = generated_level.rooms
+        self.total_floors = len(FLOOR_CONFIGS)
+        self.current_floor = 1
+        self.level = None
+        self.player = None
+        self.rooms = []
         self.current_room_id = None
-        
-        # камера
-        self.camera = Camera(self.game.GAME_W, self.game.GAME_H, CAMERA_ZOOM)
+        self.camera = None
 
         # обработка пуль и их кулдауна
         self.player_bullets = []
@@ -36,6 +36,43 @@ class Game_World(State):
         # враги!
         self.enemies = []
         self.pending_enemy_spawns = []
+        self.floor_exit = None
+        self.floor_exit_room_id = None
+
+        self.build_floor(self.current_floor)
+
+    def get_floor_settings(self, floor_number):
+        config_index = min(max(0, floor_number - 1), self.total_floors - 1)
+        return FLOOR_CONFIGS[config_index]
+
+    def center_camera_on_player(self):
+        self.camera.x = self.player.rect.centerx - self.camera.visible_width() / 2
+        self.camera.y = self.player.rect.centery - self.camera.visible_height() / 2
+        self.camera.clamp(self.level.pixel_width, self.level.pixel_height)
+
+    def build_floor(self, floor_number, player_hp=100):
+        settings = self.get_floor_settings(floor_number)
+        generated_level = BSPGenerator(
+            settings["map_width"],
+            settings["map_height"],
+            max_depth=settings["max_depth"],
+            enemy_count=settings["enemy_count"],
+        ).generate()
+
+        self.level = Level(generated_level.tiles)
+        self.player = Player(self.game, self.level, generated_level.player_spawn)
+        self.player.hp = player_hp
+        self.rooms = generated_level.rooms
+        self.current_room_id = None
+        self.camera = Camera(self.game.GAME_W, self.game.GAME_H, CAMERA_ZOOM)
+        self.center_camera_on_player()
+
+        self.player_bullets = []
+        self.enemies_bullets = []
+        self.time_since_shot = PLAYER_FIRE_COOLDOWN
+        self.enemies = []
+        self.pending_enemy_spawns = []
+
         for index, enemy_spawn in enumerate(generated_level.enemy_spawns):
             enemy_class = [OrangeEye, ShotgunEye, SniperEye][index % 3]
             self.pending_enemy_spawns.append(
@@ -45,6 +82,22 @@ class Game_World(State):
                     'enemy_class': enemy_class,
                 }
             )
+
+        if floor_number < self.total_floors and generated_level.exit_spawn is not None:
+            self.floor_exit = LevelExit(generated_level.exit_spawn)
+            self.floor_exit_room_id = generated_level.exit_room_id
+        else:
+            self.floor_exit = None
+            self.floor_exit_room_id = None
+
+    def advance_to_next_floor(self):
+        if self.current_floor >= self.total_floors:
+            return
+
+        player_hp = self.player.hp
+        self.current_floor += 1
+        self.build_floor(self.current_floor, player_hp)
+        self.game.actions['interact'] = False
 
     def get_room_world_rect(self, room):
         room_x, room_y, room_w, room_h = room
@@ -81,6 +134,18 @@ class Game_World(State):
             self.enemies.append(enemy)
             self.pending_enemy_spawns.remove(spawn_data)
 
+    def update_floor_exit(self, delta_time, actions):
+        if self.floor_exit is None:
+            return False
+
+        self.floor_exit.update(delta_time)
+
+        if self.floor_exit.can_interact(self.player.rect) and actions['interact']:
+            self.advance_to_next_floor()
+            return True
+
+        return False
+
     # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):
         if actions['pause']:
@@ -102,6 +167,9 @@ class Game_World(State):
             delta_time=delta_time
         )
         self.camera.clamp(self.level.pixel_width, self.level.pixel_height)
+
+        if self.update_floor_exit(delta_time, actions):
+            return
 
         if actions['fire'] and self.time_since_shot >= PLAYER_FIRE_COOLDOWN:
             self.spawn_player_bullet()
@@ -225,16 +293,47 @@ class Game_World(State):
         for bullet in self.enemies_bullets:
             bullet.render(display, self.camera)
 
+    def render_floor_exit(self, display):
+        if self.floor_exit is not None:
+            self.floor_exit.render(display, self.camera)
+
+    def render_hud(self, display):
+        self.game.draw_text(
+            display,
+            f"Этаж {self.current_floor}/{self.total_floors}",
+            (255, 255, 255),
+            120,
+            30,
+            24,
+        )
+
+        if self.floor_exit is not None and self.floor_exit.can_interact(self.player.rect):
+            self.game.draw_text(
+                display,
+                "SPACE - перейти на следующий этаж",
+                (210, 240, 255),
+                self.game.GAME_W / 2,
+                self.game.GAME_H - 40,
+                24,
+            )
+        elif self.current_floor == self.total_floors:
+            self.game.draw_text(
+                display,
+                "Финальный этаж. Босс будет добавлен позже.",
+                (255, 220, 160),
+                self.game.GAME_W / 2,
+                self.game.GAME_H - 40,
+                24,
+            )
+
     def render(self, display):
         display.fill((0, 0, 0))
         self.level.render(display, self.camera)
+        self.render_floor_exit(display)
 
         self.player.render(display, self.camera)
         self.render_player_bullets(display)
 
         self.render_enemies(display)
         self.render_enemies_bullets(display)
-        
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        
-        self.game.draw_text(self.game.game_canvas, f"{self.player.rect.center}", (255, 255, 255), self.game.GAME_W / 2, self.game.GAME_H - 25, 20)
+        self.render_hud(display)
