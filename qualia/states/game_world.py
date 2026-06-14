@@ -1,17 +1,13 @@
-import os
-
 import pygame
-from constants import CAMERA_ZOOM, PLAYER_BULLET_VELOCITY, PLAYER_FIRE_COOLDOWN, FLOOR_CONFIGS
+from constants import CAMERA_ZOOM, PLAYER_BULLET_VELOCITY, PLAYER_FIRE_COOLDOWN
 from entities.bullet import Bullet
 from entities.camera import Camera
 from entities.level_exit import LevelExit
-from entities.sniper_eye_enemy import SniperEye
-from entities.orange_eye_enemy import OrangeEye
 from entities.player import Player
-from entities.shotgun_eye_enemy import ShotgunEye
 from states.pause_menu import PauseMenu
 from states.state import State
 from world.bsp_generator import BSPGenerator
+from world.floor_definitions import FLOOR_DEFINITIONS
 from world.level import Level
 
 clock = pygame.time.Clock()
@@ -20,8 +16,10 @@ class Game_World(State):
     def __init__(self, game):
         # эээ основные импорты, создаие импорта и тп
         State.__init__(self, game)
-        self.total_floors = len(FLOOR_CONFIGS)
+        self.floor_definitions = FLOOR_DEFINITIONS
+        self.total_floors = len(self.floor_definitions)
         self.current_floor = 1
+        self.current_floor_definition = None
         self.level = None
         self.player = None
         self.rooms = []
@@ -41,9 +39,9 @@ class Game_World(State):
 
         self.build_floor(self.current_floor)
 
-    def get_floor_settings(self, floor_number):
-        config_index = min(max(0, floor_number - 1), self.total_floors - 1)
-        return FLOOR_CONFIGS[config_index]
+    def get_floor_definition(self, floor_number):
+        definition_index = min(max(0, floor_number - 1), self.total_floors - 1)
+        return self.floor_definitions[definition_index]
 
     def center_camera_on_player(self):
         self.camera.x = self.player.rect.centerx - self.camera.visible_width() / 2
@@ -51,15 +49,22 @@ class Game_World(State):
         self.camera.clamp(self.level.pixel_width, self.level.pixel_height)
 
     def build_floor(self, floor_number, player_hp=100):
-        settings = self.get_floor_settings(floor_number)
+        floor_definition = self.get_floor_definition(floor_number)
+        self.current_floor_definition = floor_definition
         generated_level = BSPGenerator(
-            settings["map_width"],
-            settings["map_height"],
-            max_depth=settings["max_depth"],
-            enemy_count=settings["enemy_count"],
+            floor_definition.map_width,
+            floor_definition.map_height,
+            max_depth=floor_definition.max_depth,
+            enemy_count=floor_definition.enemy_count,
         ).generate()
 
-        self.level = Level(generated_level.tiles)
+        self.level = Level(
+            generated_level.tiles,
+            floor_tile_path=floor_definition.floor_tile_path,
+            wall_tile_path=floor_definition.wall_tile_path,
+            floor_tint=floor_definition.floor_tint,
+            wall_tint=floor_definition.wall_tint,
+        )
         self.player = Player(self.game, self.level, generated_level.player_spawn)
         self.player.hp = player_hp
         self.rooms = generated_level.rooms
@@ -74,7 +79,7 @@ class Game_World(State):
         self.pending_enemy_spawns = []
 
         for index, enemy_spawn in enumerate(generated_level.enemy_spawns):
-            enemy_class = [OrangeEye, ShotgunEye, SniperEye][index % 3]
+            enemy_class = floor_definition.enemy_pool[index % len(floor_definition.enemy_pool)]
             self.pending_enemy_spawns.append(
                 {
                     'room_id': enemy_spawn.room_id,
@@ -83,7 +88,7 @@ class Game_World(State):
                 }
             )
 
-        if floor_number < self.total_floors and generated_level.exit_spawn is not None:
+        if floor_definition.has_exit and generated_level.exit_spawn is not None:
             self.floor_exit = LevelExit(generated_level.exit_spawn)
             self.floor_exit_room_id = generated_level.exit_room_id
         else:
@@ -300,9 +305,9 @@ class Game_World(State):
     def render_hud(self, display):
         self.game.draw_text(
             display,
-            f"Этаж {self.current_floor}/{self.total_floors}",
+            f"Этаж {self.current_floor}/{self.total_floors}: {self.current_floor_definition.name}",
             (255, 255, 255),
-            120,
+            210,
             30,
             24,
         )
@@ -319,7 +324,7 @@ class Game_World(State):
         elif self.current_floor == self.total_floors:
             self.game.draw_text(
                 display,
-                "Финальный этаж. Босс будет добавлен позже.",
+                "Боссовый этаж подготовлен. Босс будет добавлен позже.",
                 (255, 220, 160),
                 self.game.GAME_W / 2,
                 self.game.GAME_H - 40,

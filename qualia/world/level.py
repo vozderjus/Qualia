@@ -6,15 +6,22 @@ class Level:
     FLOOR = Tiles.FLOOR
     WALL = Tiles.WALL
     
-    def __init__(self, tiles):
+    def __init__(
+        self,
+        tiles,
+        floor_tile_path="images/floor_tile1.png",
+        wall_tile_path="images/wall_tile.png",
+        floor_tint=None,
+        wall_tint=None,
+    ):
         self.tile_size = TILE_SIZE
         
         # Создание уровня, то есть тут мы подключаем BSP
         self.tiles = tiles
         
         # картиночки для пола и стен (TODO - bitmap с полом)
-        self.floor_tile = pygame.image.load("images/floor_tile1.png").convert_alpha()
-        self.wall_tile = pygame.image.load("images/wall_tile.png").convert_alpha()
+        self.floor_tile = self.load_tinted_tile(floor_tile_path, floor_tint)
+        self.wall_tile = self.load_tinted_tile(wall_tile_path, wall_tint)
         # зум, увеличение тайлов под зум
         self._cached_zoom = None
         self._scaled_floor_tile = self.floor_tile
@@ -23,6 +30,18 @@ class Level:
         # ширина и высота уровня в пикселях
         self.pixel_width = len(self.tiles[0]) * self.tile_size
         self.pixel_height = len(self.tiles) * self.tile_size
+
+    def load_tinted_tile(self, path, tint):
+        tile = pygame.image.load(path).convert_alpha()
+
+        if tint is None:
+            return tile
+
+        tinted_tile = tile.copy()
+        tint_surface = pygame.Surface(tinted_tile.get_size(), pygame.SRCALPHA)
+        tint_surface.fill((*tint, 255))
+        tinted_tile.blit(tint_surface, (0, 0), special_flags=pygame.BLEND_RGBA_MULT)
+        return tinted_tile
     
     # функция для проверки коллизий
     def collides_with_wall(self, rect):

@@ -12,7 +12,7 @@ class ShotgunEye(Enemy):
             level=level,
             player=player,
             pos=pos,
-            image=pygame.image.load("images/orange_eye_enemy.png").convert_alpha(),
+            image=pygame.image.load("images/teeth_enemy.png").convert_alpha(),
             hp=ORANGE_EYE_HP + 1,
             speed=ORANGE_EYE_SPEED - 30,
             fire_cooldown=ORANGE_EYE_COOLDOWN + 0.35,
