@@ -4,21 +4,25 @@ from entities.bullet import Bullet
 from entities.camera import Camera
 from entities.level_exit import LevelExit
 from entities.player import Player
+from run_state import RunState
 from states.pause_menu import PauseMenu
 from states.state import State
 from world.bsp_generator import BSPGenerator
 from world.floor_definitions import FLOOR_DEFINITIONS
 from world.level import Level
+from states.player_ui import HealthBar
 
 clock = pygame.time.Clock()
 
 class Game_World(State):
-    def __init__(self, game):
+    def __init__(self, game, run_state=None):
         # эээ основные импорты, создаие импорта и тп
         State.__init__(self, game)
         self.floor_definitions = FLOOR_DEFINITIONS
         self.total_floors = len(self.floor_definitions)
-        self.current_floor = 1
+        self.run_state = run_state or RunState.new_run(self.total_floors)
+        self.game.run_state = self.run_state
+        self.current_floor = self.run_state.current_floor
         self.current_floor_definition = None
         self.level = None
         self.player = None
@@ -36,8 +40,9 @@ class Game_World(State):
         self.pending_enemy_spawns = []
         self.floor_exit = None
         self.floor_exit_room_id = None
+        self.health_bar = None
 
-        self.build_floor(self.current_floor)
+        self.build_floor(self.run_state.current_floor)
 
     def get_floor_definition(self, floor_number):
         definition_index = min(max(0, floor_number - 1), self.total_floors - 1)
@@ -48,7 +53,7 @@ class Game_World(State):
         self.camera.y = self.player.rect.centery - self.camera.visible_height() / 2
         self.camera.clamp(self.level.pixel_width, self.level.pixel_height)
 
-    def build_floor(self, floor_number, player_hp=100):
+    def build_floor(self, floor_number):
         floor_definition = self.get_floor_definition(floor_number)
         self.current_floor_definition = floor_definition
         generated_level = BSPGenerator(
@@ -66,7 +71,8 @@ class Game_World(State):
             wall_tint=floor_definition.wall_tint,
         )
         self.player = Player(self.game, self.level, generated_level.player_spawn)
-        self.player.hp = player_hp
+        self.run_state.apply_to_player(self.player)
+        self.health_bar = HealthBar(self.player.hp, self.run_state.max_player_hp)
         self.rooms = generated_level.rooms
         self.current_room_id = None
         self.camera = Camera(self.game.GAME_W, self.game.GAME_H, CAMERA_ZOOM)
@@ -96,12 +102,13 @@ class Game_World(State):
             self.floor_exit_room_id = None
 
     def advance_to_next_floor(self):
-        if self.current_floor >= self.total_floors:
+        self.run_state.sync_from_player(self.player)
+
+        if not self.run_state.advance_floor():
             return
 
-        player_hp = self.player.hp
-        self.current_floor += 1
-        self.build_floor(self.current_floor, player_hp)
+        self.current_floor = self.run_state.current_floor
+        self.build_floor(self.current_floor)
         self.game.actions['interact'] = False
 
     def get_room_world_rect(self, room):
@@ -151,6 +158,13 @@ class Game_World(State):
 
         return False
 
+    def sync_player_ui(self):
+        if self.health_bar is None or self.player is None:
+            return
+
+        self.health_bar.hp = self.player.hp
+        self.health_bar.max_hp = self.run_state.max_player_hp
+
     # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):
         if actions['pause']:
@@ -186,6 +200,8 @@ class Game_World(State):
 
         self.handle_player_to_enemy_collisions()
         self.handle_enemy_to_player_collisions()
+        self.run_state.sync_from_player(self.player)
+        self.sync_player_ui()
 
     def update_player_bullets(self, delta_time):
         for bullet in self.player_bullets[:]: # проходимся по копии списка 
@@ -303,11 +319,16 @@ class Game_World(State):
             self.floor_exit.render(display, self.camera)
 
     def render_hud(self, display):
+        self.sync_player_ui()
+
+        if self.health_bar is not None:
+            self.health_bar.render(display)
+
         self.game.draw_text(
             display,
             f"Этаж {self.current_floor}/{self.total_floors}: {self.current_floor_definition.name}",
             (255, 255, 255),
-            210,
+            150,
             30,
             24,
         )

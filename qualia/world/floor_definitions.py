@@ -1,8 +1,8 @@
 from dataclasses import dataclass
 
 from entities.orange_eye_enemy import OrangeEye
-from entities.shotgun_eye_enemy import ShotgunEye
-from entities.sniper_eye_enemy import SniperEye
+from entities.teeth_enemy import ShotgunEnemy
+from entities.prism_enemy import SniperEnemy
 
 
 @dataclass(frozen=True)
@@ -30,7 +30,7 @@ FLOOR_DEFINITIONS = (
         map_height=40,
         max_depth=3,
         enemy_count=5,
-        enemy_pool=(OrangeEye, ShotgunEye),
+        enemy_pool=(OrangeEye, ShotgunEnemy),
         floor_tint=(255, 255, 255),
         wall_tint=(245, 245, 255),
     ),
@@ -41,7 +41,7 @@ FLOOR_DEFINITIONS = (
         map_height=42,
         max_depth=3,
         enemy_count=6,
-        enemy_pool=(OrangeEye, ShotgunEye, SniperEye),
+        enemy_pool=(OrangeEye, ShotgunEnemy, SniperEnemy),
         floor_tint=(220, 240, 255),
         wall_tint=(210, 225, 255),
     ),
@@ -52,7 +52,7 @@ FLOOR_DEFINITIONS = (
         map_height=44,
         max_depth=4,
         enemy_count=7,
-        enemy_pool=(OrangeEye, ShotgunEye, SniperEye, ShotgunEye),
+        enemy_pool=(OrangeEye, ShotgunEnemy, SniperEnemy, ShotgunEnemy),
         floor_tint=(255, 230, 205),
         wall_tint=(240, 210, 185),
     ),
@@ -63,7 +63,7 @@ FLOOR_DEFINITIONS = (
         map_height=46,
         max_depth=4,
         enemy_count=8,
-        enemy_pool=(OrangeEye, ShotgunEye, SniperEye, SniperEye),
+        enemy_pool=(OrangeEye, ShotgunEnemy, SniperEnemy, SniperEnemy),
         floor_tint=(230, 225, 220),
         wall_tint=(205, 195, 190),
     ),
@@ -74,7 +74,7 @@ FLOOR_DEFINITIONS = (
         map_height=48,
         max_depth=4,
         enemy_count=9,
-        enemy_pool=(ShotgunEye, SniperEye, OrangeEye, SniperEye),
+        enemy_pool=(ShotgunEnemy, SniperEnemy, OrangeEye, SniperEnemy),
         floor_tint=(235, 220, 210),
         wall_tint=(220, 195, 180),
         has_exit=False,

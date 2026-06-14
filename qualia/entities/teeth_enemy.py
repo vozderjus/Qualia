@@ -1,27 +1,27 @@
 import pygame
 
-from constants import SNIPER_EYE_COOLDOWN, SNIPER_EYE_HP, SNIPER_EYE_SPEED
+from constants import ORANGE_EYE_COOLDOWN, ORANGE_EYE_HP, ORANGE_EYE_SPEED
 from entities.basic_enemy import Enemy
-from entities.enemies_behavior import KeepDistanceMovement, SniperAttack
+from entities.enemies_behavior import ConeShotAttack, KeepDistanceMovement
 
 
-class SniperEye(Enemy):
+class ShotgunEnemy(Enemy):
     def __init__(self, game, level, player, pos):
         super().__init__(
             game=game,
             level=level,
             player=player,
             pos=pos,
-            image=pygame.image.load("images/orange_eye_enemy.png").convert_alpha(),
-            hp=SNIPER_EYE_HP,
-            speed=SNIPER_EYE_SPEED,
-            fire_cooldown=SNIPER_EYE_COOLDOWN,
-            role='sniper'
+            image=pygame.image.load("images/teeth_enemy.png").convert_alpha(),
+            hp=ORANGE_EYE_HP + 1,
+            speed=ORANGE_EYE_SPEED - 30,
+            fire_cooldown=ORANGE_EYE_COOLDOWN + 0.35,
+            role='burst'
         )
         self.movement_behavior = KeepDistanceMovement()
-        self.attack_behavior = SniperAttack()
-        self.preferred_min_range = 260
-        self.preferred_max_range = 420
+        self.attack_behavior = ConeShotAttack()
+        self.preferred_min_range = 160
+        self.preferred_max_range = 300
         self.phase = 'idle'
 
     def update(self, delta_time):

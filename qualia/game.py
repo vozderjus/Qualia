@@ -20,6 +20,7 @@ class Game():
         self.actions = {"left": False, "right": False, "up": False, "down": False, "interact": False, "pause": False, "inventory": False, "start": False, "fire": False}
         self.dt, self.prev_time = 0, 0 #framerate independance
         self.state_stack = [] #game states management
+        self.run_state = None
         self.clock = pygame.time.Clock()
         self.load_assets()
         self.load_states()
