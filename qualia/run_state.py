@@ -1,19 +1,21 @@
 from dataclasses import dataclass, field
 
+from constants import PLAYER_MAX_HP
+
 
 @dataclass
 class RunState:
     total_floors: int
     current_floor: int = 1
-    player_hp: int = 100
-    max_player_hp: int = 100
+    player_hp: int = PLAYER_MAX_HP
+    max_player_hp: int = PLAYER_MAX_HP
     currency: int = 0
     keys: int = 0
     upgrades: list[str] = field(default_factory=list)
     cleared_floors: list[int] = field(default_factory=list)
 
     @classmethod
-    def new_run(cls, total_floors, starting_hp=100):
+    def new_run(cls, total_floors, starting_hp=PLAYER_MAX_HP):
         return cls(
             total_floors=total_floors,
             current_floor=1,
@@ -30,6 +32,9 @@ class RunState:
     def apply_to_player(self, player):
         player.hp = self.player_hp
 
+    def heal_after_level(self):
+        self.player_hp = self.player_hp + self.max_player_hp // 2
+
     def mark_floor_cleared(self):
         if self.current_floor not in self.cleared_floors:
             self.cleared_floors.append(self.current_floor)
@@ -42,6 +47,7 @@ class RunState:
             return False
 
         self.mark_floor_cleared()
+        self.heal_after_level()
         self.current_floor += 1
         return True
 

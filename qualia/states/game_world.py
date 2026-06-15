@@ -1,11 +1,20 @@
+import random
+
 import pygame
-from constants import CAMERA_ZOOM, PLAYER_BULLET_VELOCITY, PLAYER_FIRE_COOLDOWN
+from constants import (
+    CAMERA_ZOOM,
+    PLAYER_BULLET_DAMAGE_RANGE,
+    PLAYER_BULLET_VELOCITY,
+    PLAYER_FIRE_COOLDOWN,
+)
 from entities.bullet import Bullet
 from entities.camera import Camera
+from entities.floating_damage_text import FloatingDamageText
 from entities.level_exit import LevelExit
 from entities.player import Player
 from entities.room_door import RoomDoor
 from run_state import RunState
+from states.game_over import GameOver
 from states.pause_menu import PauseMenu
 from states.state import State
 from world.bsp_generator import BSPGenerator
@@ -47,6 +56,7 @@ class Game_World(State):
         self.pending_room_doors = []
         self.cleared_room_ids = set()
         self.health_bar = None
+        self.damage_texts = []
 
         self.build_floor(self.run_state.current_floor)
 
@@ -94,6 +104,7 @@ class Game_World(State):
         self.active_room_doors = []
         self.pending_room_doors = []
         self.cleared_room_ids = set()
+        self.damage_texts = []
         self.level.clear_dynamic_blockers()
 
         for index, enemy_spawn in enumerate(generated_level.enemy_spawns):
@@ -327,6 +338,16 @@ class Game_World(State):
         self.health_bar.hp = self.player.hp
         self.health_bar.max_hp = self.run_state.max_player_hp
 
+    def spawn_damage_text(self, value, position, color):
+        self.damage_texts.append(
+            FloatingDamageText(self.game, value, position, color)
+        )
+
+    def update_damage_texts(self, delta_time):
+        for damage_text in self.damage_texts[:]:
+            if not damage_text.update(delta_time):
+                self.damage_texts.remove(damage_text)
+
     def update_room_lock_state(self, delta_time):
         for door in self.active_room_doors:
             door.update(delta_time)
@@ -382,8 +403,14 @@ class Game_World(State):
         self.handle_player_to_enemy_collisions()
         self.handle_enemy_to_player_collisions()
         self.update_room_lock_state(delta_time)
+        self.update_damage_texts(delta_time)
         self.run_state.sync_from_player(self.player)
         self.sync_player_ui()
+
+        if self.player.is_dead():
+            new_state = GameOver(self.game)
+            new_state.enter_state()
+            return
 
     def update_player_bullets(self, delta_time):
         for bullet in self.player_bullets[:]: # проходимся по копии списка 
@@ -407,6 +434,7 @@ class Game_World(State):
                         shot_data['origin'],
                         direction,
                         shot_data['speed'],
+                        shot_data['damage_range'],
                     )
 
             if enemy.is_dead():
@@ -452,12 +480,14 @@ class Game_World(State):
 
         # применение всех метрик
         velocity = direction.normalize() * PLAYER_BULLET_VELOCITY
-        new_bullet = Bullet(spawn_point, velocity)
+        damage = random.randint(*PLAYER_BULLET_DAMAGE_RANGE)
+        new_bullet = Bullet(spawn_point, velocity, damage)
         self.player_bullets.append(new_bullet)
 
-    def spawn_enemy_bullet(self, origin, direction, speed):
+    def spawn_enemy_bullet(self, origin, direction, speed, damage_range):
         velocity = direction * speed
-        bullet = Bullet(origin, velocity)
+        damage = random.randint(*damage_range)
+        bullet = Bullet(origin, velocity, damage)
         self.enemies_bullets.append(bullet)
 
     # ======== ВЫЧИСЛЕНИЯ КОЛЛИЗИЙ ========
@@ -468,7 +498,12 @@ class Game_World(State):
                     continue
 
                 if player_bullet.rect.colliderect(enemy.rect):
-                    enemy.take_damage(1)
+                    self.spawn_damage_text(
+                        player_bullet.damage,
+                        enemy.rect.midtop,
+                        (255, 235, 120),
+                    )
+                    enemy.take_damage(player_bullet.damage)
 
                     if player_bullet in self.player_bullets:
                         self.player_bullets.remove(player_bullet)
@@ -478,7 +513,12 @@ class Game_World(State):
     def handle_enemy_to_player_collisions(self):
         for enemy_bullet in self.enemies_bullets[:]:
             if enemy_bullet.rect.colliderect(self.player.rect):
-                self.player.take_damage(1)
+                self.spawn_damage_text(
+                    enemy_bullet.damage,
+                    self.player.rect.midtop,
+                    (255, 120, 120),
+                )
+                self.player.take_damage(enemy_bullet.damage)
 
                 if enemy_bullet in self.enemies_bullets:
                     self.enemies_bullets.remove(enemy_bullet)
@@ -495,6 +535,10 @@ class Game_World(State):
     def render_enemies_bullets(self, display):
         for bullet in self.enemies_bullets:
             bullet.render(display, self.camera)
+
+    def render_damage_texts(self, display):
+        for damage_text in self.damage_texts:
+            damage_text.render(display, self.camera)
 
     def render_floor_exit(self, display):
         if self.floor_exit is not None:
@@ -549,4 +593,5 @@ class Game_World(State):
 
         self.render_enemies(display)
         self.render_enemies_bullets(display)
+        self.render_damage_texts(display)
         self.render_hud(display)

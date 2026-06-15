@@ -1,6 +1,6 @@
 import pygame
 
-from constants import ORANGE_EYE_COOLDOWN, ORANGE_EYE_HP, ORANGE_EYE_SPEED
+from constants import ORANGE_EYE_COOLDOWN, ORANGE_EYE_SPEED, SHOTGUN_ENEMY_HP
 from entities.basic_enemy import Enemy
 from entities.enemies_behavior import ConeShotAttack, KeepDistanceMovement
 
@@ -13,7 +13,7 @@ class ShotgunEnemy(Enemy):
             player=player,
             pos=pos,
             image=pygame.image.load("images/teeth_enemy.png").convert_alpha(),
-            hp=ORANGE_EYE_HP + 1,
+            hp=SHOTGUN_ENEMY_HP,
             speed=ORANGE_EYE_SPEED - 30,
             fire_cooldown=ORANGE_EYE_COOLDOWN + 0.35,
             role='burst'

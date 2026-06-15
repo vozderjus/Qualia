@@ -31,6 +31,7 @@ class Enemy():
         self.rect = self.image.get_rect(center=pos)
 
         self.hp = hp
+        self.max_hp = hp
         self.speed = speed
 
         self.fire_cooldown = fire_cooldown
@@ -224,7 +225,7 @@ class Enemy():
         self.time_since_shot = 0
 
     def take_damage(self, amount):
-        self.hp -= amount
+        self.hp = max(0, self.hp - amount)
 
     def is_dead(self):
         return self.hp <= 0

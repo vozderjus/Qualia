@@ -3,7 +3,7 @@ from constants import PLAYER_BULLET_SIZE
 
 
 class Bullet():
-    def __init__(self, pos, velocity):
+    def __init__(self, pos, velocity, damage):
         self.image = pygame.Surface((PLAYER_BULLET_SIZE, PLAYER_BULLET_SIZE), pygame.SRCALPHA)
         pygame.draw.circle(
             self.image,
@@ -13,6 +13,7 @@ class Bullet():
         )
         self.pos = pygame.Vector2(pos)
         self.vel = pygame.Vector2(velocity)
+        self.damage = damage
         self.rect = self.image.get_rect(center=self.pos) # используется в рендере
     
     def update(self, delta_time):

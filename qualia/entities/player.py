@@ -1,5 +1,5 @@
 import pygame
-from constants import PLAYER_SIZE, PLAYER_SPEED
+from constants import PLAYER_MAX_HP, PLAYER_SIZE, PLAYER_SPEED
 
 
 class Player():
@@ -20,7 +20,8 @@ class Player():
         # доп импорты
         self.level = level
         self.game = game
-        self.hp = 100
+        self.max_hp = PLAYER_MAX_HP
+        self.hp = self.max_hp
 
     def update(self, delta_time, actions):
         direction_x = actions['right'] - actions['left']
@@ -49,7 +50,7 @@ class Player():
         return self.rect.center
 
     def take_damage(self, damage):
-        self.hp -= damage
+        self.hp = max(0, self.hp - damage)
 
     def is_dead(self):
         return self.hp <= 0

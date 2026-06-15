@@ -1,6 +1,11 @@
 import pygame
 
-from constants import ENEMY_BULLET_VELOCITY, SNIPER_BULLET_VELOCITY
+from constants import (
+    ENEMY_BULLET_DAMAGE_RANGE,
+    ENEMY_BULLET_VELOCITY,
+    SNIPER_BULLET_DAMAGE_RANGE,
+    SNIPER_BULLET_VELOCITY,
+)
 
 
 class ChaseMovement:
@@ -62,6 +67,7 @@ class SingleShotAttack:
                 'origin': enemy.get_shot_origin(),
                 'directions': [context.direction_to_target],
                 'speed': ENEMY_BULLET_VELOCITY,
+                'damage_range': ENEMY_BULLET_DAMAGE_RANGE,
             }
 
         return None
@@ -89,6 +95,7 @@ class ConeShotAttack:
                 'origin': enemy.get_shot_origin(),
                 'directions': directions,
                 'speed': ENEMY_BULLET_VELOCITY,
+                'damage_range': ENEMY_BULLET_DAMAGE_RANGE,
             }
 
         return None
@@ -109,6 +116,7 @@ class SniperAttack:
                 'origin': enemy.get_shot_origin(),
                 'directions': [context.direction_to_target],
                 'speed': SNIPER_BULLET_VELOCITY,
+                'damage_range': SNIPER_BULLET_DAMAGE_RANGE,
             }
 
         return None
