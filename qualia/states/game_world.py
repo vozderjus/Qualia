@@ -4,6 +4,7 @@ from entities.bullet import Bullet
 from entities.camera import Camera
 from entities.level_exit import LevelExit
 from entities.player import Player
+from entities.room_door import RoomDoor
 from run_state import RunState
 from states.pause_menu import PauseMenu
 from states.state import State
@@ -40,6 +41,11 @@ class Game_World(State):
         self.pending_enemy_spawns = []
         self.floor_exit = None
         self.floor_exit_room_id = None
+        self.locked_room_id = None
+        self.pending_lock_room_id = None
+        self.active_room_doors = []
+        self.pending_room_doors = []
+        self.cleared_room_ids = set()
         self.health_bar = None
 
         self.build_floor(self.run_state.current_floor)
@@ -83,6 +89,12 @@ class Game_World(State):
         self.time_since_shot = PLAYER_FIRE_COOLDOWN
         self.enemies = []
         self.pending_enemy_spawns = []
+        self.locked_room_id = None
+        self.pending_lock_room_id = None
+        self.active_room_doors = []
+        self.pending_room_doors = []
+        self.cleared_room_ids = set()
+        self.level.clear_dynamic_blockers()
 
         for index, enemy_spawn in enumerate(generated_level.enemy_spawns):
             enemy_class = floor_definition.enemy_pool[index % len(floor_definition.enemy_pool)]
@@ -127,9 +139,156 @@ class Game_World(State):
 
         return None
 
+    def is_floor_tile(self, tile_x, tile_y):
+        if tile_y < 0 or tile_y >= len(self.level.tiles):
+            return False
+        if tile_x < 0 or tile_x >= len(self.level.tiles[0]):
+            return False
+
+        return self.level.tiles[tile_y][tile_x] == self.level.FLOOR.value
+
+    def group_contiguous_positions(self, positions):
+        if not positions:
+            return []
+
+        sorted_positions = sorted(positions)
+        groups = []
+        group_start = sorted_positions[0]
+        previous = sorted_positions[0]
+
+        for position in sorted_positions[1:]:
+            if position == previous + 1:
+                previous = position
+                continue
+
+            groups.append((group_start, previous))
+            group_start = position
+            previous = position
+
+        groups.append((group_start, previous))
+        return groups
+
+    def build_room_doors(self, room_id):
+        room_x, room_y, room_w, room_h = self.rooms[room_id]
+        tile_size = self.level.tile_size
+        doors = []
+
+        top_openings = [
+            tile_x
+            for tile_x in range(room_x, room_x + room_w)
+            if self.is_floor_tile(tile_x, room_y) and self.is_floor_tile(tile_x, room_y - 1)
+        ]
+        for start_x, end_x in self.group_contiguous_positions(top_openings):
+            boundary_y = room_y * tile_size
+            rect = pygame.Rect(
+                start_x * tile_size,
+                boundary_y - tile_size // 2,
+                (end_x - start_x + 1) * tile_size,
+                tile_size,
+            )
+            doors.append(RoomDoor(rect, "top"))
+
+        bottom_openings = [
+            tile_x
+            for tile_x in range(room_x, room_x + room_w)
+            if self.is_floor_tile(tile_x, room_y + room_h - 1) and self.is_floor_tile(tile_x, room_y + room_h)
+        ]
+        for start_x, end_x in self.group_contiguous_positions(bottom_openings):
+            boundary_y = (room_y + room_h) * tile_size
+            rect = pygame.Rect(
+                start_x * tile_size,
+                boundary_y - tile_size // 2,
+                (end_x - start_x + 1) * tile_size,
+                tile_size,
+            )
+            doors.append(RoomDoor(rect, "bottom"))
+
+        left_openings = [
+            tile_y
+            for tile_y in range(room_y, room_y + room_h)
+            if self.is_floor_tile(room_x, tile_y) and self.is_floor_tile(room_x - 1, tile_y)
+        ]
+        for start_y, end_y in self.group_contiguous_positions(left_openings):
+            boundary_x = room_x * tile_size
+            rect = pygame.Rect(
+                boundary_x - tile_size // 2,
+                start_y * tile_size,
+                tile_size,
+                (end_y - start_y + 1) * tile_size,
+            )
+            doors.append(RoomDoor(rect, "left"))
+
+        right_openings = [
+            tile_y
+            for tile_y in range(room_y, room_y + room_h)
+            if self.is_floor_tile(room_x + room_w - 1, tile_y) and self.is_floor_tile(room_x + room_w, tile_y)
+        ]
+        for start_y, end_y in self.group_contiguous_positions(right_openings):
+            boundary_x = (room_x + room_w) * tile_size
+            rect = pygame.Rect(
+                boundary_x - tile_size // 2,
+                start_y * tile_size,
+                tile_size,
+                (end_y - start_y + 1) * tile_size,
+            )
+            doors.append(RoomDoor(rect, "right"))
+
+        return doors
+
+    def has_living_room_enemies(self, room_id):
+        return any(enemy.room_id == room_id for enemy in self.enemies)
+
+    def queue_room_lock(self, room_id):
+        if room_id is None or room_id in self.cleared_room_ids:
+            return
+
+        self.pending_lock_room_id = room_id
+        self.pending_room_doors = self.build_room_doors(room_id)
+
+    def can_close_room(self, room_id, doors):
+        if room_id is None or not doors:
+            return False
+
+        room_rect = self.get_room_world_rect(self.rooms[room_id])
+        margin = self.level.tile_size
+        safe_rect = room_rect.inflate(-(margin * 2), -(margin * 2))
+
+        if safe_rect.width <= 0 or safe_rect.height <= 0:
+            safe_rect = room_rect
+
+        if not safe_rect.contains(self.player.rect):
+            return False
+
+        for door in doors:
+            if door.rect.colliderect(self.player.rect):
+                return False
+
+        return True
+
+    def lock_room(self, room_id, doors):
+        self.pending_lock_room_id = None
+        self.pending_room_doors = []
+        self.locked_room_id = room_id
+        self.active_room_doors = doors
+        for door in self.active_room_doors:
+            door.start_deploy()
+        self.level.set_dynamic_blockers([door.rect for door in self.active_room_doors])
+
+    def unlock_room(self):
+        if self.locked_room_id is not None:
+            self.cleared_room_ids.add(self.locked_room_id)
+
+        self.locked_room_id = None
+        self.pending_lock_room_id = None
+        self.active_room_doors = []
+        self.pending_room_doors = []
+        self.level.clear_dynamic_blockers()
+
     def spawn_room_enemies(self, room_id):
         if room_id is None:
-            return
+            return False
+
+        spawned_any = False
 
         for spawn_data in self.pending_enemy_spawns[:]:
             if spawn_data['room_id'] != room_id:
@@ -145,6 +304,9 @@ class Game_World(State):
             enemy.room_id = room_id
             self.enemies.append(enemy)
             self.pending_enemy_spawns.remove(spawn_data)
+            spawned_any = True
+
+        return spawned_any
 
     def update_floor_exit(self, delta_time, actions):
         if self.floor_exit is None:
@@ -165,6 +327,23 @@ class Game_World(State):
         self.health_bar.hp = self.player.hp
         self.health_bar.max_hp = self.run_state.max_player_hp
 
+    def update_room_lock_state(self, delta_time):
+        for door in self.active_room_doors:
+            door.update(delta_time)
+
+        if self.pending_lock_room_id is not None:
+            if self.current_room_id == self.pending_lock_room_id and self.can_close_room(
+                self.pending_lock_room_id,
+                self.pending_room_doors,
+            ):
+                self.lock_room(self.pending_lock_room_id, self.pending_room_doors.copy())
+
+        if self.locked_room_id is None:
+            return
+
+        if not self.has_living_room_enemies(self.locked_room_id):
+            self.unlock_room()
+
     # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):
         if actions['pause']:
@@ -176,7 +355,9 @@ class Game_World(State):
         player_room_id = self.get_room_id_for_point(self.player.rect.center)
         if player_room_id != self.current_room_id:
             self.current_room_id = player_room_id
-            self.spawn_room_enemies(player_room_id)
+            spawned_any = self.spawn_room_enemies(player_room_id)
+            if spawned_any:
+                self.queue_room_lock(player_room_id)
 
         self.time_since_shot += delta_time
         self.camera.smooth_follow(
@@ -200,6 +381,7 @@ class Game_World(State):
 
         self.handle_player_to_enemy_collisions()
         self.handle_enemy_to_player_collisions()
+        self.update_room_lock_state(delta_time)
         self.run_state.sync_from_player(self.player)
         self.sync_player_ui()
 
@@ -318,6 +500,10 @@ class Game_World(State):
         if self.floor_exit is not None:
             self.floor_exit.render(display, self.camera)
 
+    def render_room_doors(self, display):
+        for door in self.active_room_doors:
+            door.render(display, self.camera)
+
     def render_hud(self, display):
         self.sync_player_ui()
 
@@ -356,6 +542,7 @@ class Game_World(State):
         display.fill((0, 0, 0))
         self.level.render(display, self.camera)
         self.render_floor_exit(display)
+        self.render_room_doors(display)
 
         self.player.render(display, self.camera)
         self.render_player_bullets(display)

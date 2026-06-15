@@ -24,8 +24,8 @@ SNIPER_EYE_COOLDOWN = 1.8
 # === все что связано с тайлингом ===
 TILE_SIZE = 32
 MIN_CORRIDOR_WIDTH = 3
-MIN_ROOM_SIZE = 8
-MIN_AREA_SIZE = 10
+MIN_ROOM_SIZE = 10
+MIN_AREA_SIZE = 12
 
 class Tiles(Enum):
     FLOOR = 1

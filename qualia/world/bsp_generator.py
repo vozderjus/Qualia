@@ -86,8 +86,13 @@ class BSPNode():
         if max_w < min_room or max_h < min_room:
             return
 
-        rw = random.randint(min_room, max_w)
-        rh = random.randint(min_room, max_h)
+        # Комнаты делаем ближе к размеру leaf-области, чтобы они не были
+        # мелкими островками внутри большого прямоугольника.
+        min_w = max(min_room, int(max_w * 0.72))
+        min_h = max(min_room, int(max_h * 0.72))
+
+        rw = random.randint(min_w, max_w)
+        rh = random.randint(min_h, max_h)
         rx = self.x + random.randint(padding, self.width - rw - padding)
         ry = self.y + random.randint(padding, self.height - rh - padding)
 
@@ -240,15 +245,50 @@ class BSPGenerator:
         if not available_rooms:
             available_rooms = list(enumerate(rooms[1:], start=1))
 
-        random.shuffle(available_rooms)
-        selected_rooms = available_rooms[:self.enemy_count]
-        return [
-            EnemySpawn(
-                room_id=room_id,
-                position=self.room_to_world_center(room),
+        selected_rooms = available_rooms
+        enemy_count = max(self.enemy_count, len(selected_rooms) * 2)
+
+        enemy_spawns = []
+        for enemy_index in range(enemy_count):
+            room_id, room = selected_rooms[enemy_index % len(selected_rooms)]
+            room_slot_index = enemy_index // len(selected_rooms)
+            enemy_spawns.append(
+                EnemySpawn(
+                    room_id=room_id,
+                    position=self.get_enemy_position_in_room(room, room_slot_index),
+                )
             )
-            for room_id, room in selected_rooms
-        ]
+
+        random.shuffle(enemy_spawns)
+        return enemy_spawns
+
+    def get_enemy_position_in_room(self, room, slot_index):
+        center_x, center_y = self.room_to_world_center(room)
+        rx, ry, rw, rh = room
+
+        min_x = rx * TILE_SIZE + TILE_SIZE
+        max_x = (rx + rw) * TILE_SIZE - TILE_SIZE
+        min_y = ry * TILE_SIZE + TILE_SIZE
+        max_y = (ry + rh) * TILE_SIZE - TILE_SIZE
+
+        offset_step = TILE_SIZE * 2
+        spawn_offsets = (
+            (0, 0),
+            (-offset_step, 0),
+            (offset_step, 0),
+            (0, -offset_step),
+            (0, offset_step),
+            (-offset_step, -offset_step),
+            (offset_step, -offset_step),
+            (-offset_step, offset_step),
+            (offset_step, offset_step),
+        )
+
+        offset_x, offset_y = spawn_offsets[slot_index % len(spawn_offsets)]
+        spawn_x = max(min_x, min(center_x + offset_x, max_x))
+        spawn_y = max(min_y, min(center_y + offset_y, max_y))
+
+        return (spawn_x, spawn_y)
 
     def generate(self):
         grid = [

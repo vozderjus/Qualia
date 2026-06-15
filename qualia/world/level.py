@@ -18,6 +18,7 @@ class Level:
         
         # Создание уровня, то есть тут мы подключаем BSP
         self.tiles = tiles
+        self.dynamic_blockers = []
         
         # картиночки для пола и стен (TODO - bitmap с полом)
         self.floor_tile = self.load_tinted_tile(floor_tile_path, floor_tint)
@@ -45,6 +46,10 @@ class Level:
     
     # функция для проверки коллизий
     def collides_with_wall(self, rect):
+        for blocker in self.dynamic_blockers:
+            if blocker.colliderect(rect):
+                return True
+
         left_tile, right_tile = rect.left // self.tile_size, (rect.right - 1) // self.tile_size
         top_tile, bottom_tile = rect.top // self.tile_size, (rect.bottom - 1) // self.tile_size
 
@@ -58,6 +63,12 @@ class Level:
                     return True
 
         return False
+
+    def set_dynamic_blockers(self, blockers):
+        self.dynamic_blockers = [pygame.Rect(blocker) for blocker in blockers]
+
+    def clear_dynamic_blockers(self):
+        self.dynamic_blockers = []
 
     # вспомогательный метод для расчета линии взгляда
     def world_point_to_tile(self, x, y):
