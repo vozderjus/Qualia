@@ -26,6 +26,9 @@ class RunState:
     def set_player_hp(self, hp):
         self.player_hp = max(0, min(hp, self.max_player_hp))
 
+    def add_currency(self, amount):
+        self.currency = max(0, self.currency + amount)
+
     def sync_from_player(self, player):
         self.set_player_hp(player.hp)
 

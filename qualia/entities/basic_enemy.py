@@ -1,5 +1,8 @@
+import random
 from dataclasses import dataclass
+
 import pygame
+from constants import HEAT_DROP_RANGE
 
 
 @dataclass(slots=True)
@@ -52,6 +55,7 @@ class Enemy():
         self.awareness_radius = 420
         self.has_detected_player = False
         self.last_known_player_position = pygame.Vector2(self.rect.center)
+        self.heat_drop_range = HEAT_DROP_RANGE
         self.is_spawning = True
         self.spawn_duration = 0.45
         self.spawn_timer = self.spawn_duration
@@ -229,6 +233,9 @@ class Enemy():
 
     def is_dead(self):
         return self.hp <= 0
+
+    def roll_heat_drop(self):
+        return random.randint(*self.heat_drop_range)
 
     def get_shot_origin(self):
         return self.rect.center

@@ -10,17 +10,19 @@ from constants import (
 from entities.bullet import Bullet
 from entities.camera import Camera
 from entities.floating_damage_text import FloatingDamageText
+from entities.heat_pickup import HeatPickup
 from entities.level_exit import LevelExit
 from entities.player import Player
 from entities.room_door import RoomDoor
 from run_state import RunState
+from states.debug_hud import DebugHUD
 from states.game_over import GameOver
 from states.pause_menu import PauseMenu
 from states.state import State
 from world.bsp_generator import BSPGenerator
 from world.floor_definitions import FLOOR_DEFINITIONS
 from world.level import Level
-from states.player_ui import HealthBar
+from states.player_ui import PlayerUI
 
 clock = pygame.time.Clock()
 
@@ -55,8 +57,10 @@ class Game_World(State):
         self.active_room_doors = []
         self.pending_room_doors = []
         self.cleared_room_ids = set()
-        self.health_bar = None
+        self.player_ui = None
         self.damage_texts = []
+        self.heat_pickups = []
+        self.debug_hud = DebugHUD(self.game, self)
 
         self.build_floor(self.run_state.current_floor)
 
@@ -88,7 +92,7 @@ class Game_World(State):
         )
         self.player = Player(self.game, self.level, generated_level.player_spawn)
         self.run_state.apply_to_player(self.player)
-        self.health_bar = HealthBar(self.player.hp, self.run_state.max_player_hp)
+        self.player_ui = PlayerUI(self.game, self.player.hp, self.run_state.max_player_hp)
         self.rooms = generated_level.rooms
         self.current_room_id = None
         self.camera = Camera(self.game.GAME_W, self.game.GAME_H, CAMERA_ZOOM)
@@ -105,6 +109,7 @@ class Game_World(State):
         self.pending_room_doors = []
         self.cleared_room_ids = set()
         self.damage_texts = []
+        self.heat_pickups = []
         self.level.clear_dynamic_blockers()
 
         for index, enemy_spawn in enumerate(generated_level.enemy_spawns):
@@ -133,6 +138,38 @@ class Game_World(State):
         self.current_floor = self.run_state.current_floor
         self.build_floor(self.current_floor)
         self.game.actions['interact'] = False
+
+    def jump_to_floor(self, floor_number):
+        target_floor = max(1, min(floor_number, self.total_floors))
+        if target_floor == self.current_floor:
+            return
+
+        self.run_state.sync_from_player(self.player)
+        self.run_state.current_floor = target_floor
+        self.current_floor = target_floor
+        self.build_floor(target_floor)
+        self.game.actions['interact'] = False
+        self.game.actions['fire'] = False
+
+    def heal_player_to_full(self):
+        self.player.hp = self.run_state.max_player_hp
+        self.run_state.sync_from_player(self.player)
+        self.sync_player_ui()
+
+    def clear_current_room_enemies(self):
+        target_room_id = self.locked_room_id
+        if target_room_id is None:
+            target_room_id = self.current_room_id
+
+        if target_room_id is None:
+            return
+
+        for enemy in self.enemies[:]:
+            if enemy.room_id == target_room_id:
+                self.remove_enemy(enemy)
+
+        if self.locked_room_id is not None and not self.has_living_room_enemies(self.locked_room_id):
+            self.unlock_room()
 
     def get_room_world_rect(self, room):
         room_x, room_y, room_w, room_h = room
@@ -332,11 +369,17 @@ class Game_World(State):
         return False
 
     def sync_player_ui(self):
-        if self.health_bar is None or self.player is None:
+        if self.player_ui is None or self.player is None:
             return
 
-        self.health_bar.hp = self.player.hp
-        self.health_bar.max_hp = self.run_state.max_player_hp
+        self.player_ui.sync(
+            self.player.hp,
+            self.run_state.max_player_hp,
+            self.current_floor,
+            self.total_floors,
+            self.current_floor_definition.name,
+            self.run_state.currency,
+        )
 
     def spawn_damage_text(self, value, position, color):
         self.damage_texts.append(
@@ -347,6 +390,34 @@ class Game_World(State):
         for damage_text in self.damage_texts[:]:
             if not damage_text.update(delta_time):
                 self.damage_texts.remove(damage_text)
+
+    def spawn_heat_drop(self, enemy):
+        amount = enemy.roll_heat_drop()
+        self.heat_pickups.append(HeatPickup(enemy.rect.center, amount))
+
+    def remove_enemy(self, enemy):
+        if enemy not in self.enemies:
+            return
+
+        self.spawn_heat_drop(enemy)
+        self.enemies.remove(enemy)
+
+    def update_heat_pickups(self, delta_time):
+        for heat_pickup in self.heat_pickups:
+            heat_pickup.update(delta_time)
+
+    def handle_heat_pickup_player_collisions(self):
+        for heat_pickup in self.heat_pickups[:]:
+            if not heat_pickup.can_collect(self.player.rect):
+                continue
+
+            self.run_state.add_currency(heat_pickup.amount)
+            self.spawn_damage_text(
+                f"+{heat_pickup.amount} жар",
+                heat_pickup.rect.midtop,
+                (255, 170, 70),
+            )
+            self.heat_pickups.remove(heat_pickup)
 
     def update_room_lock_state(self, delta_time):
         for door in self.active_room_doors:
@@ -367,6 +438,18 @@ class Game_World(State):
 
     # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):
+        if actions['debug_toggle']:
+            self.debug_hud.toggle()
+            self.game.actions['debug_toggle'] = False
+            self.game.actions['fire'] = False
+            return
+
+        if self.debug_hud.visible:
+            self.debug_hud.update()
+            self.game.actions['fire'] = False
+            self.sync_player_ui()
+            return
+
         if actions['pause']:
             new_state = PauseMenu(self.game)
             new_state.enter_state()
@@ -399,9 +482,11 @@ class Game_World(State):
         self.update_player_bullets(delta_time)
         self.update_enemies(delta_time)
         self.update_enemy_bullets(delta_time)
+        self.update_heat_pickups(delta_time)
 
         self.handle_player_to_enemy_collisions()
         self.handle_enemy_to_player_collisions()
+        self.handle_heat_pickup_player_collisions()
         self.update_room_lock_state(delta_time)
         self.update_damage_texts(delta_time)
         self.run_state.sync_from_player(self.player)
@@ -426,6 +511,10 @@ class Game_World(State):
 
     def update_enemies(self, delta_time):
         for enemy in self.enemies[:]:
+            if enemy.is_dead():
+                self.remove_enemy(enemy)
+                continue
+
             shot_data = enemy.update(delta_time)
 
             if shot_data is not None:
@@ -438,7 +527,7 @@ class Game_World(State):
                     )
 
             if enemy.is_dead():
-                self.enemies.remove(enemy)
+                self.remove_enemy(enemy)
 
     def update_enemy_bullets(self, delta_time):
         for bullet in self.enemies_bullets[:]:
@@ -504,6 +593,8 @@ class Game_World(State):
                         (255, 235, 120),
                     )
                     enemy.take_damage(player_bullet.damage)
+                    if enemy.is_dead():
+                        self.remove_enemy(enemy)
 
                     if player_bullet in self.player_bullets:
                         self.player_bullets.remove(player_bullet)
@@ -536,6 +627,10 @@ class Game_World(State):
         for bullet in self.enemies_bullets:
             bullet.render(display, self.camera)
 
+    def render_heat_pickups(self, display):
+        for heat_pickup in self.heat_pickups:
+            heat_pickup.render(display, self.camera)
+
     def render_damage_texts(self, display):
         for damage_text in self.damage_texts:
             damage_text.render(display, self.camera)
@@ -551,17 +646,10 @@ class Game_World(State):
     def render_hud(self, display):
         self.sync_player_ui()
 
-        if self.health_bar is not None:
-            self.health_bar.render(display)
+        if self.player_ui is not None:
+            self.player_ui.render(display)
 
-        self.game.draw_text(
-            display,
-            f"Этаж {self.current_floor}/{self.total_floors}: {self.current_floor_definition.name}",
-            (255, 255, 255),
-            150,
-            30,
-            24,
-        )
+    def render_world_prompt(self, display):
 
         if self.floor_exit is not None and self.floor_exit.can_interact(self.player.rect):
             self.game.draw_text(
@@ -586,6 +674,7 @@ class Game_World(State):
         display.fill((0, 0, 0))
         self.level.render(display, self.camera)
         self.render_floor_exit(display)
+        self.render_heat_pickups(display)
         self.render_room_doors(display)
 
         self.player.render(display, self.camera)
@@ -595,3 +684,7 @@ class Game_World(State):
         self.render_enemies_bullets(display)
         self.render_damage_texts(display)
         self.render_hud(display)
+        self.render_world_prompt(display)
+
+        if self.debug_hud.visible:
+            self.debug_hud.render(display)
