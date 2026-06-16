@@ -18,6 +18,8 @@ class GeneratedLevel:
     enemy_spawns: list[EnemySpawn]
     exit_spawn: tuple[int, int] | None
     exit_room_id: int | None
+    boss_spawn: tuple[int, int] | None
+    boss_room_id: int | None
     shop_spawn: tuple[int, int] | None
     shop_room_id: int | None
 
@@ -181,12 +183,27 @@ class BSPNode():
 
 
 class BSPGenerator:
-    def __init__(self, map_width, map_height, max_depth=4, enemy_count=1, has_shop=False):
+    def __init__(
+        self,
+        map_width,
+        map_height,
+        max_depth=4,
+        enemy_count=1,
+        has_shop=False,
+        is_boss_floor=False,
+        boss_min_room_width=0,
+        boss_min_room_height=0,
+        boss_min_room_area=0,
+    ):
         self.map_width = map_width
         self.map_height = map_height
         self.max_depth = max_depth
         self.enemy_count = enemy_count
         self.has_shop = has_shop
+        self.is_boss_floor = is_boss_floor
+        self.boss_min_room_width = boss_min_room_width
+        self.boss_min_room_height = boss_min_room_height
+        self.boss_min_room_area = boss_min_room_area
 
     def split_tree(self, node, depth):
         if depth <= 0:
@@ -235,6 +252,58 @@ class BSPGenerator:
 
         return farthest_room_id, self.room_to_world_center(farthest_room)
 
+    def is_valid_boss_room(self, room):
+        _, _, room_width, room_height = room
+        room_area = room_width * room_height
+        return (
+            room_width >= self.boss_min_room_width
+            and room_height >= self.boss_min_room_height
+            and room_area >= self.boss_min_room_area
+        )
+
+    def choose_boss_room(self, rooms):
+        if len(rooms) <= 1:
+            return None, None
+
+        start_room = rooms[0]
+        start_center_x = start_room[0] + start_room[2] // 2
+        start_center_y = start_room[1] + start_room[3] // 2
+        room_score = lambda room: (
+            room[1][2] * room[1][3],
+            (room[1][0] + room[1][2] // 2 - start_center_x) ** 2
+            + (room[1][1] + room[1][3] // 2 - start_center_y) ** 2,
+        )
+
+        candidate_rooms = [
+            (room_id, room)
+            for room_id, room in enumerate(rooms[1:], start=1)
+            if self.is_valid_boss_room(room)
+        ]
+
+        if not candidate_rooms:
+            return None, None
+
+        boss_room_id, boss_room = max(candidate_rooms, key=room_score)
+        return boss_room_id, self.room_to_world_center(boss_room)
+
+    def choose_largest_room(self, rooms):
+        if len(rooms) <= 1:
+            return None, None
+
+        start_room = rooms[0]
+        start_center_x = start_room[0] + start_room[2] // 2
+        start_center_y = start_room[1] + start_room[3] // 2
+
+        largest_room_id, largest_room = max(
+            enumerate(rooms[1:], start=1),
+            key=lambda item: (
+                item[1][2] * item[1][3],
+                (item[1][0] + item[1][2] // 2 - start_center_x) ** 2
+                + (item[1][1] + item[1][3] // 2 - start_center_y) ** 2,
+            ),
+        )
+        return largest_room_id, self.room_to_world_center(largest_room)
+
     def choose_shop(self, rooms, exit_room_id=None):
         if len(rooms) <= 1:
             return None, None
@@ -261,21 +330,32 @@ class BSPGenerator:
         )
         return shop_room_id, self.room_to_world_center(shop_room)
 
-    def choose_enemy_spawns(self, rooms, exit_room_id=None, shop_room_id=None):
+    def choose_enemy_spawns(
+        self,
+        rooms,
+        exit_room_id=None,
+        shop_room_id=None,
+        boss_room_id=None,
+    ):
+        if self.enemy_count <= 0:
+            return []
+
         if len(rooms) <= 1:
             return []
 
         available_rooms = [
             (room_id, room)
             for room_id, room in enumerate(rooms[1:], start=1)
-            if room_id != exit_room_id and room_id != shop_room_id
+            if room_id != exit_room_id
+            and room_id != shop_room_id
+            and room_id != boss_room_id
         ]
 
         if not available_rooms:
             available_rooms = [
                 (room_id, room)
                 for room_id, room in enumerate(rooms[1:], start=1)
-                if room_id != shop_room_id
+                if room_id != shop_room_id and room_id != boss_room_id
             ]
 
         if not available_rooms:
@@ -327,32 +407,58 @@ class BSPGenerator:
         return (spawn_x, spawn_y)
 
     def generate(self):
-        grid = [
-            [Tiles.WALL.value for _ in range(self.map_width)]
-            for _ in range(self.map_height)
-        ]
+        attempts = 24 if self.is_boss_floor else 1
 
-        root = BSPNode(0, 0, self.map_width, self.map_height)
+        for attempt_index in range(attempts):
+            grid = [
+                [Tiles.WALL.value for _ in range(self.map_width)]
+                for _ in range(self.map_height)
+            ]
 
-        self.split_tree(root, self.max_depth)
-        root.create_rooms(grid)
-        root.connect_children(grid, Tiles.FLOOR.value)
-        rooms = root.collect_rooms()
-        player_spawn = self.choose_player_spawn(rooms)
-        exit_room_id, exit_spawn = self.choose_exit(rooms)
-        shop_room_id = None
-        shop_spawn = None
-        if self.has_shop:
-            shop_room_id, shop_spawn = self.choose_shop(rooms, exit_room_id)
-        enemy_spawns = self.choose_enemy_spawns(rooms, exit_room_id, shop_room_id)
+            root = BSPNode(0, 0, self.map_width, self.map_height)
 
-        return GeneratedLevel(
-            tiles=grid,
-            rooms=rooms,
-            player_spawn=player_spawn,
-            enemy_spawns=enemy_spawns,
-            exit_spawn=exit_spawn,
-            exit_room_id=exit_room_id,
-            shop_spawn=shop_spawn,
-            shop_room_id=shop_room_id,
-        )
+            self.split_tree(root, self.max_depth)
+            root.create_rooms(grid)
+            root.connect_children(grid, Tiles.FLOOR.value)
+            rooms = root.collect_rooms()
+            player_spawn = self.choose_player_spawn(rooms)
+            exit_room_id = None
+            exit_spawn = None
+            boss_room_id = None
+            boss_spawn = None
+
+            if self.is_boss_floor:
+                boss_room_id, boss_spawn = self.choose_boss_room(rooms)
+                if boss_room_id is None and attempt_index < attempts - 1:
+                    continue
+                if boss_room_id is None:
+                    boss_room_id, boss_spawn = self.choose_largest_room(rooms)
+            else:
+                exit_room_id, exit_spawn = self.choose_exit(rooms)
+
+            shop_room_id = None
+            shop_spawn = None
+            if self.has_shop:
+                reserved_room_id = exit_room_id
+                if reserved_room_id is None:
+                    reserved_room_id = boss_room_id
+                shop_room_id, shop_spawn = self.choose_shop(rooms, reserved_room_id)
+            enemy_spawns = self.choose_enemy_spawns(
+                rooms,
+                exit_room_id,
+                shop_room_id,
+                boss_room_id,
+            )
+
+            return GeneratedLevel(
+                tiles=grid,
+                rooms=rooms,
+                player_spawn=player_spawn,
+                enemy_spawns=enemy_spawns,
+                exit_spawn=exit_spawn,
+                exit_room_id=exit_room_id,
+                boss_spawn=boss_spawn,
+                boss_room_id=boss_room_id,
+                shop_spawn=shop_spawn,
+                shop_room_id=shop_room_id,
+            )

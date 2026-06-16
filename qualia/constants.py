@@ -39,6 +39,10 @@ BLUE_EYE_HP = 150
 BLUE_EYE_SPEED = 250
 BLUE_EYE_COOLDOWN = 0.8
 
+# босс
+BOSS_SIZE = 128
+BOSS_HP = 780
+
 # === все что связано с тайлингом ===
 TILE_SIZE = 32
 MIN_CORRIDOR_WIDTH = 3

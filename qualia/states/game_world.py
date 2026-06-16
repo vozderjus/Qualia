@@ -14,6 +14,7 @@ from run_state import RunState
 from shop_content import SHOP_REROLL_COST, roll_shop_offer, roll_shop_offers
 from states.debug_hud import DebugHUD
 from states.game_over import GameOver
+from states.game_victory import GameVictory
 from states.pause_menu import PauseMenu
 from states.player_ui import PlayerUI
 from states.shop_menu import ShopMenu
@@ -55,6 +56,10 @@ class Game_World(State):
         self.active_room_doors = []
         self.pending_room_doors = []
         self.cleared_room_ids = set()
+        self.boss = None
+        self.boss_room_id = None
+        self.pending_boss_spawn = None
+        self.pending_victory = False
         self.player_ui = None
         self.damage_texts = []
         self.heat_pickups = []
@@ -84,6 +89,10 @@ class Game_World(State):
             max_depth=floor_definition.max_depth,
             enemy_count=floor_definition.enemy_count,
             has_shop=floor_definition.has_shop,
+            is_boss_floor=floor_definition.is_boss_floor,
+            boss_min_room_width=floor_definition.boss_min_room_width,
+            boss_min_room_height=floor_definition.boss_min_room_height,
+            boss_min_room_area=floor_definition.boss_min_room_area,
         ).generate()
 
         self.level = Level(
@@ -111,6 +120,10 @@ class Game_World(State):
         self.active_room_doors = []
         self.pending_room_doors = []
         self.cleared_room_ids = set()
+        self.boss = None
+        self.boss_room_id = generated_level.boss_room_id
+        self.pending_boss_spawn = None
+        self.pending_victory = False
         self.damage_texts = []
         self.heat_pickups = []
         self.shop_room_id = generated_level.shop_room_id
@@ -119,15 +132,28 @@ class Game_World(State):
         self.shop_offers = []
         self.level.clear_dynamic_blockers()
 
-        for index, enemy_spawn in enumerate(generated_level.enemy_spawns):
-            enemy_class = floor_definition.enemy_pool[index % len(floor_definition.enemy_pool)]
-            self.pending_enemy_spawns.append(
-                {
-                    'room_id': enemy_spawn.room_id,
-                    'position': enemy_spawn.position,
-                    'enemy_class': enemy_class,
-                }
-            )
+        if floor_definition.enemy_pool:
+            for index, enemy_spawn in enumerate(generated_level.enemy_spawns):
+                enemy_class = floor_definition.enemy_pool[
+                    index % len(floor_definition.enemy_pool)
+                ]
+                self.pending_enemy_spawns.append(
+                    {
+                        'room_id': enemy_spawn.room_id,
+                        'position': enemy_spawn.position,
+                        'enemy_class': enemy_class,
+                    }
+                )
+
+        if (
+            floor_definition.boss_class is not None
+            and generated_level.boss_spawn is not None
+        ):
+            self.pending_boss_spawn = {
+                'room_id': generated_level.boss_room_id,
+                'position': generated_level.boss_spawn,
+                'boss_class': floor_definition.boss_class,
+            }
 
         if floor_definition.has_exit and generated_level.exit_spawn is not None:
             self.floor_exit = LevelExit(generated_level.exit_spawn)
@@ -405,6 +431,20 @@ class Game_World(State):
             self.pending_enemy_spawns.remove(spawn_data)
             spawned_any = True
 
+        if self.pending_boss_spawn is not None and self.pending_boss_spawn['room_id'] == room_id:
+            boss_class = self.pending_boss_spawn['boss_class']
+            boss = boss_class(
+                self.game,
+                self.level,
+                self.player,
+                self.pending_boss_spawn['position'],
+            )
+            boss.room_id = room_id
+            self.boss = boss
+            self.enemies.append(boss)
+            self.pending_boss_spawn = None
+            spawned_any = True
+
         return spawned_any
 
     def update_shop_keeper(self, delta_time):
@@ -454,6 +494,24 @@ class Game_World(State):
             self.run_state.currency,
         )
 
+    def complete_boss_victory(self):
+        if not self.pending_victory:
+            return False
+
+        self.pending_victory = False
+        self.run_state.sync_from_player(self.player)
+        self.run_state.mark_floor_cleared()
+        self.unlock_room()
+        self.player_bullets = []
+        self.enemies_bullets = []
+        self.game.run_state = self.run_state
+        self.game.actions['fire'] = False
+        self.game.actions['interact'] = False
+
+        victory_state = GameVictory(self.game)
+        victory_state.enter_state()
+        return True
+
     def spawn_damage_text(self, value, position, color):
         self.damage_texts.append(
             FloatingDamageText(self.game, value, position, color)
@@ -472,8 +530,14 @@ class Game_World(State):
         if enemy not in self.enemies:
             return
 
-        self.spawn_heat_drop(enemy)
         self.enemies.remove(enemy)
+        if enemy is self.boss:
+            self.boss = None
+            self.pending_boss_spawn = None
+            self.pending_victory = True
+            return
+
+        self.spawn_heat_drop(enemy)
 
     def update_heat_pickups(self, delta_time):
         for heat_pickup in self.heat_pickups:
@@ -511,6 +575,9 @@ class Game_World(State):
 
     # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):
+        if self.complete_boss_victory():
+            return
+
         if actions['debug_toggle']:
             self.debug_hud.toggle()
             self.game.actions['debug_toggle'] = False
@@ -519,6 +586,8 @@ class Game_World(State):
 
         if self.debug_hud.visible:
             self.debug_hud.update()
+            if self.complete_boss_victory():
+                return
             self.game.actions['fire'] = False
             self.sync_player_ui()
             return
@@ -559,10 +628,14 @@ class Game_World(State):
 
         self.update_player_bullets(delta_time)
         self.update_enemies(delta_time)
+        if self.complete_boss_victory():
+            return
         self.update_enemy_bullets(delta_time)
         self.update_heat_pickups(delta_time)
 
         self.handle_player_to_enemy_collisions()
+        if self.complete_boss_victory():
+            return
         self.handle_enemy_to_player_collisions()
         self.handle_heat_pickup_player_collisions()
         self.update_room_lock_state(delta_time)
@@ -591,6 +664,8 @@ class Game_World(State):
         for enemy in self.enemies[:]:
             if enemy.is_dead():
                 self.remove_enemy(enemy)
+                if self.pending_victory:
+                    return
                 continue
 
             shot_data = enemy.update(delta_time)
@@ -608,6 +683,8 @@ class Game_World(State):
 
             if enemy.is_dead():
                 self.remove_enemy(enemy)
+                if self.pending_victory:
+                    return
 
     def update_enemy_bullets(self, delta_time):
         for bullet in self.enemies_bullets[:]:
@@ -723,7 +800,10 @@ class Game_World(State):
 
                     if player_bullet in self.player_bullets:
                         self.player_bullets.remove(player_bullet)
-                    
+
+                    if self.pending_victory:
+                        return
+
                     break
     
     def handle_enemy_to_player_collisions(self):
@@ -778,6 +858,48 @@ class Game_World(State):
         if self.player_ui is not None:
             self.player_ui.render(display)
 
+    def render_boss_ui(self, display):
+        if self.boss is None or not self.boss.is_combat_ready():
+            return
+
+        hp_ratio = 0
+        if self.boss.max_hp > 0:
+            hp_ratio = max(0, min(1, self.boss.hp / self.boss.max_hp))
+
+        bar_width = 520
+        bar_height = 22
+        bar_rect = pygame.Rect(
+            self.game.GAME_W // 2 - bar_width // 2,
+            44,
+            bar_width,
+            bar_height,
+        )
+        fill_rect = bar_rect.copy()
+        fill_rect.width = int(bar_rect.width * hp_ratio)
+        phase_color = self.boss.get_phase_color()
+
+        pygame.draw.rect(display, (34, 18, 24), bar_rect, border_radius=10)
+        if fill_rect.width > 0:
+            pygame.draw.rect(display, phase_color, fill_rect, border_radius=10)
+        pygame.draw.rect(display, (236, 225, 212), bar_rect, 3, border_radius=10)
+
+        self.game.draw_text(
+            display,
+            self.boss.display_name,
+            (255, 238, 214),
+            self.game.GAME_W / 2,
+            20,
+            28,
+        )
+        self.game.draw_text(
+            display,
+            self.boss.phase_label,
+            phase_color,
+            self.game.GAME_W / 2,
+            82,
+            20,
+        )
+
     def render_world_prompt(self, display):
 
         if self.floor_exit is not None and self.floor_exit.can_interact(self.player.rect):
@@ -789,15 +911,31 @@ class Game_World(State):
                 self.game.GAME_H - 40,
                 24,
             )
-        elif self.current_floor == self.total_floors:
-            self.game.draw_text(
-                display,
-                "Боссовый этаж подготовлен. Босс будет добавлен позже.",
-                (255, 220, 160),
-                self.game.GAME_W / 2,
-                self.game.GAME_H - 40,
-                24,
-            )
+            return
+
+        if not self.current_floor_definition.is_boss_floor:
+            return
+
+        if self.boss is not None:
+            prompt_text = "Победите босса, чтобы завершить забег"
+            prompt_color = (255, 220, 160)
+        elif self.pending_boss_spawn is not None:
+            if self.current_room_id == self.boss_room_id:
+                prompt_text = "Зал босса пробуждается"
+            else:
+                prompt_text = "Найдите зал босса"
+            prompt_color = (210, 230, 255)
+        else:
+            return
+
+        self.game.draw_text(
+            display,
+            prompt_text,
+            prompt_color,
+            self.game.GAME_W / 2,
+            self.game.GAME_H - 40,
+            24,
+        )
 
     def render(self, display):
         display.fill((0, 0, 0))
@@ -814,6 +952,7 @@ class Game_World(State):
         self.render_enemies_bullets(display)
         self.render_damage_texts(display)
         self.render_hud(display)
+        self.render_boss_ui(display)
         self.render_world_prompt(display)
 
         if self.debug_hud.visible:
