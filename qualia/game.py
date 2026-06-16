@@ -135,7 +135,7 @@ class Game():
         self.images_dir = os.path.join("images")
         self.audio_dir = os.path.join("audio")
         self.font = pygame.font.Font(os.path.join("font", "PixelifySans-VariableFont_wght.ttf"), 80)
-    
+
     # основной стэк где будут подгружаться все состояния
     def load_states(self):
         self.title_screen = Title(self)

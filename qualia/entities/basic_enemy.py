@@ -193,31 +193,6 @@ class Enemy():
             int(ring_radius),
             ring_width,
         )
-
-    def update_detection_telegraph(self, delta_time):
-        if self.detection_telegraph_timer > 0:
-            self.detection_telegraph_timer = max(
-                0.0,
-                self.detection_telegraph_timer - delta_time,
-            )
-
-    def render_detection_telegraph(self, display, anchor_rect):
-        if self.detection_telegraph_timer <= 0:
-            return
-
-        color = (255, 90, 90)
-        line_height = max(8, anchor_rect.height // 3)
-        line_width = max(2, anchor_rect.width // 10)
-        dot_radius = max(2, anchor_rect.width // 12)
-        center_x = anchor_rect.centerx
-        top_y = anchor_rect.top - max(10, anchor_rect.height // 5)
-
-        line_rect = pygame.Rect(0, 0, line_width, line_height)
-        line_rect.midtop = (center_x, top_y)
-        dot_center = (center_x, line_rect.bottom + dot_radius + 1)
-
-        pygame.draw.rect(display, color, line_rect, border_radius=max(1, line_width // 2))
-        pygame.draw.circle(display, color, dot_center, dot_radius)
         
     def update_fire_timer(self, delta_time):
         self.time_since_shot += delta_time
@@ -243,10 +218,8 @@ class Enemy():
     def render(self, display, camera=None):
         if camera is None:
             self.render_spawn_effect(display, self.rect, self.image.copy())
-            self.render_detection_telegraph(display, self.rect)
             return
 
         screen_rect = camera.apply_rect(self.rect)
         scaled_image = pygame.transform.scale(self.image, screen_rect.size)
         self.render_spawn_effect(display, screen_rect, scaled_image)
-        self.render_detection_telegraph(display, screen_rect)

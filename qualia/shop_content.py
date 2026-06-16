@@ -1,7 +1,6 @@
 import random
 from dataclasses import dataclass
 
-
 SHOP_REROLL_COST = 12
 
 

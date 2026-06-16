@@ -28,7 +28,6 @@ class OrangeEye(Enemy):
             return None
 
         self.update_fire_timer(delta_time)
-        self.update_detection_telegraph(delta_time)
 
         context = self.build_context()
         move_vector = self.movement_behavior.get_movement_vector(self, context)

@@ -1,26 +1,26 @@
 import pygame
-from constants import SNIPER_EYE_COOLDOWN, SNIPER_EYE_HP, SNIPER_EYE_SPEED
+from constants import HEART_COOLDOWN, HEART_HP, HEART_SPEED
 from entities.basic_enemy import Enemy
-from entities.enemies_behavior import KeepDistanceMovement, SniperAttack
+from entities.enemies_behavior import HeartAttack, IdleMovement
 
 
-class SniperEnemy(Enemy):
+class HeartEnemy(Enemy):
     def __init__(self, game, level, player, pos):
         super().__init__(
             game=game,
             level=level,
             player=player,
             pos=pos,
-            image=pygame.image.load("images/prism_enemy.png").convert_alpha(),
-            hp=SNIPER_EYE_HP,
-            speed=SNIPER_EYE_SPEED,
-            fire_cooldown=SNIPER_EYE_COOLDOWN,
-            role='sniper'
+            image=pygame.image.load("images/heart_enemy.png").convert_alpha(),
+            hp=HEART_HP,
+            speed=HEART_SPEED,
+            fire_cooldown=HEART_COOLDOWN,
+            role='burst',
         )
-        self.movement_behavior = KeepDistanceMovement()
-        self.attack_behavior = SniperAttack()
-        self.preferred_min_range = 260
-        self.preferred_max_range = 420
+        self.movement_behavior = IdleMovement()
+        self.attack_behavior = HeartAttack()
+        self.preferred_min_range = 0
+        self.preferred_max_range = 300
         self.phase = 'idle'
 
     def update(self, delta_time):

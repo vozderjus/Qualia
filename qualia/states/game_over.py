@@ -1,5 +1,4 @@
 import pygame
-
 from states.state import State
 
 

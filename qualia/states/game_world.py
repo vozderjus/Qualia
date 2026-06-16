@@ -1,10 +1,7 @@
 import random
 
 import pygame
-from constants import (
-    CAMERA_ZOOM,
-    PLAYER_BULLET_VELOCITY,
-)
+from constants import CAMERA_ZOOM, PLAYER_BULLET_VELOCITY
 from entities.bullet import Bullet
 from entities.camera import Camera
 from entities.floating_damage_text import FloatingDamageText
@@ -18,12 +15,12 @@ from shop_content import SHOP_REROLL_COST, roll_shop_offer, roll_shop_offers
 from states.debug_hud import DebugHUD
 from states.game_over import GameOver
 from states.pause_menu import PauseMenu
+from states.player_ui import PlayerUI
 from states.shop_menu import ShopMenu
 from states.state import State
 from world.bsp_generator import BSPGenerator
 from world.floor_definitions import FLOOR_DEFINITIONS
 from world.level import Level
-from states.player_ui import PlayerUI
 
 clock = pygame.time.Clock()
 
@@ -605,6 +602,8 @@ class Game_World(State):
                         direction,
                         shot_data['speed'],
                         shot_data['damage_range'],
+                        shot_data.get('bounce_range'),
+                        shot_data.get('speed_loss_per_bounce', 0),
                     )
 
             if enemy.is_dead():
@@ -612,15 +611,42 @@ class Game_World(State):
 
     def update_enemy_bullets(self, delta_time):
         for bullet in self.enemies_bullets[:]:
-            bullet.update(delta_time)
-
             level_rect = pygame.Rect(0, 0, self.level.pixel_width, self.level.pixel_height)
+            next_pos = bullet.pos.copy()
+            hit_x = False
+            hit_y = False
+
+            next_x = bullet.pos.x + bullet.vel.x * delta_time
+            next_rect_x = bullet.rect.copy()
+            next_rect_x.center = (int(next_x), int(bullet.pos.y))
+            if self.level.collides_with_wall(next_rect_x):
+                hit_x = True
+            else:
+                next_pos.x = next_x
+
+            next_y = bullet.pos.y + bullet.vel.y * delta_time
+            next_rect_y = bullet.rect.copy()
+            next_rect_y.center = (int(next_pos.x), int(next_y))
+            if self.level.collides_with_wall(next_rect_y):
+                hit_y = True
+            else:
+                next_pos.y = next_y
+
+            bullet.pos = next_pos
+            bullet.sync_rect()
+
+            if hit_x or hit_y:
+                if not bullet.bounce(hit_x, hit_y):
+                    self.enemies_bullets.remove(bullet)
+                    continue
+
+                if bullet.vel.length_squared() > 0:
+                    bullet.pos += bullet.vel.normalize() * 2
+                    bullet.sync_rect()
+
             if not level_rect.colliderect(bullet.rect):
                 self.enemies_bullets.remove(bullet)
                 continue
-
-            if self.level.collides_with_wall(bullet.rect):
-                self.enemies_bullets.remove(bullet)
     
     # ======== ВСЕ СПАВНЫ ========
     def spawn_player_bullet(self):
@@ -654,10 +680,28 @@ class Game_World(State):
         new_bullet = Bullet(spawn_point, velocity, damage)
         self.player_bullets.append(new_bullet)
 
-    def spawn_enemy_bullet(self, origin, direction, speed, damage_range):
+    def spawn_enemy_bullet(
+        self,
+        origin,
+        direction,
+        speed,
+        damage_range,
+        bounce_range=None,
+        speed_loss_per_bounce=0,
+    ):
         velocity = direction * speed
         damage = random.randint(*damage_range)
-        bullet = Bullet(origin, velocity, damage)
+        remaining_bounces = 0
+        if bounce_range is not None:
+            remaining_bounces = random.randint(*bounce_range)
+
+        bullet = Bullet(
+            origin,
+            velocity,
+            damage,
+            remaining_bounces=remaining_bounces,
+            speed_loss_per_bounce=speed_loss_per_bounce,
+        )
         self.enemies_bullets.append(bullet)
 
     # ======== ВЫЧИСЛЕНИЯ КОЛЛИЗИЙ ========

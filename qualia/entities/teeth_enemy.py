@@ -1,5 +1,4 @@
 import pygame
-
 from constants import ORANGE_EYE_COOLDOWN, ORANGE_EYE_SPEED, SHOTGUN_ENEMY_HP
 from entities.basic_enemy import Enemy
 from entities.enemies_behavior import ConeShotAttack, KeepDistanceMovement
@@ -29,7 +28,6 @@ class ShotgunEnemy(Enemy):
             return None
 
         self.update_fire_timer(delta_time)
-        self.update_detection_telegraph(delta_time)
 
         context = self.build_context()
         move_vector = self.movement_behavior.get_movement_vector(self, context)
