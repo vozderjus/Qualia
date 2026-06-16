@@ -19,6 +19,7 @@ class FloorDefinition:
     floor_tint: tuple[int, int, int] | None = None
     wall_tint: tuple[int, int, int] | None = None
     has_exit: bool = True
+    has_shop: bool = False
     is_boss_floor: bool = False
 
 
@@ -55,6 +56,7 @@ FLOOR_DEFINITIONS = (
         enemy_pool=(OrangeEye, ShotgunEnemy, SniperEnemy, ShotgunEnemy),
         floor_tint=(255, 230, 205),
         wall_tint=(240, 210, 185),
+        has_shop=True,
     ),
     FloorDefinition(
         floor_number=4,

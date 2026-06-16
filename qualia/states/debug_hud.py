@@ -10,12 +10,12 @@ class DebugHUD:
         self.visible = False
         self.clicked = False
         self.heat_amount = 50
-        self.font_path = os.path.join("font", "PixelifySans-VariableFont_wght.ttf")
+        self.font_path = os.path.join("font", "Keleti-Regular.ttf")
 
         self.overlay = pygame.Surface((self.game.GAME_W, self.game.GAME_H), pygame.SRCALPHA)
-        self.overlay.fill((7, 10, 18, 190))
+        self.overlay.fill((0, 0, 0, 170))
 
-        self.panel_rect = pygame.Rect(0, 0, 820, 500)
+        self.panel_rect = pygame.Rect(0, 0, 960, 560)
         self.panel_rect.center = (self.game.GAME_W // 2, self.game.GAME_H // 2)
 
     def toggle(self):
@@ -39,39 +39,42 @@ class DebugHUD:
         panel = self.panel_rect
         buttons = []
 
+        floor_y = panel.top + 220
+        prev_width = 170
+        next_width = 170
+        floor_button_width = 82
+        floor_button_gap = 10
+
         buttons.append(
             self.make_button(
-                panel.left + 36,
-                panel.top + 126,
-                144,
-                48,
+                panel.left + 30,
+                floor_y + 10,
+                prev_width,
+                50,
                 "Пред. этаж",
                 "prev_floor",
             )
         )
         buttons.append(
             self.make_button(
-                panel.left + 640,
-                panel.top + 126,
-                144,
+                panel.right - 30 - next_width,
+                floor_y + 10,
+                next_width,
                 48,
                 "След. этаж",
                 "next_floor",
             )
         )
 
-        floor_button_width = 78
-        floor_button_gap = 12
-        floor_row_y = panel.top + 126
         total_floors = self.world.total_floors
-        total_width = total_floors * floor_button_width + (total_floors - 1) * floor_button_gap
-        start_x = panel.centerx - total_width // 2
+        row_width = total_floors * floor_button_width + (total_floors - 1) * floor_button_gap
+        start_x = panel.centerx - row_width // 2
 
         for floor_number in range(1, total_floors + 1):
             buttons.append(
                 self.make_button(
                     start_x + (floor_number - 1) * (floor_button_width + floor_button_gap),
-                    floor_row_y,
+                    floor_y + 10,
                     floor_button_width,
                     48,
                     str(floor_number),
@@ -79,109 +82,64 @@ class DebugHUD:
                 )
             )
 
-        buttons.append(
-            self.make_button(
-                panel.left + 36,
-                panel.top + 256,
-                80,
-                48,
-                "-10",
-                "heat_down",
-            )
-        )
-        buttons.append(
-            self.make_button(
-                panel.left + 298,
-                panel.top + 256,
-                80,
-                48,
-                "+10",
-                "heat_up",
-            )
-        )
-        buttons.append(
-            self.make_button(
-                panel.left + 410,
-                panel.top + 256,
-                174,
-                48,
-                "Добавить жар",
-                "add_heat",
-            )
-        )
-        buttons.append(
-            self.make_button(
-                panel.left + 610,
-                panel.top + 256,
-                174,
-                48,
-                "Убрать жар",
-                "remove_heat",
-            )
+        heat_y = panel.top + 350
+        buttons.extend(
+            [
+                self.make_button(panel.left + 30, heat_y, 80, 48, "-10", "heat_down"),
+                self.make_button(panel.left + 122, heat_y, 80, 48, "+10", "heat_up"),
+                self.make_button(panel.left + 250, heat_y, 250, 48, "Добавить жар", "add_heat"),
+                self.make_button(panel.left + 520, heat_y, 250, 48, "Убрать жар", "remove_heat"),
+            ]
         )
 
-        buttons.append(
-            self.make_button(
-                panel.left + 36,
-                panel.top + 364,
-                220,
-                52,
-                "Полное лечение",
-                "heal_full",
-            )
-        )
-        buttons.append(
-            self.make_button(
-                panel.left + 300,
-                panel.top + 364,
-                220,
-                52,
-                "Очистить комнату",
-                "clear_room",
-            )
-        )
-        buttons.append(
-            self.make_button(
-                panel.left + 564,
-                panel.top + 364,
-                220,
-                52,
-                "Закрыть HUD",
-                "close",
-            )
+        util_y = panel.top + 470
+        buttons.extend(
+            [
+                self.make_button(panel.left + 30, util_y, 250, 48, "Полное лечение", "heal_full"),
+                self.make_button(panel.left + 300, util_y, 250, 48, "Очистить комнату", "clear_room"),
+                self.make_button(panel.left + 570, util_y, 250, 48, "Закрыть HUD", "close"),
+            ]
         )
 
         return buttons
 
-    def draw_text_left(self, display, text, color, x, y, size=24):
+    def draw_text(self, display, text, color, x, y, size=24, center=False):
         font = pygame.font.Font(self.font_path, size)
         text_surface = font.render(text, True, color)
+        if center:
+            text_rect = text_surface.get_rect(center=(x, y))
+            display.blit(text_surface, text_rect)
+            return
+
         display.blit(text_surface, (x, y))
 
     def draw_button(self, display, button, mouse_pos):
         rect = button["rect"]
         hovered = rect.collidepoint(mouse_pos)
+        is_current_floor = button["action"] == f"floor:{self.world.current_floor}"
 
-        fill_color = (50, 60, 78)
-        border_color = (120, 145, 185)
+        fill_color = (42, 46, 56)
+        border_color = (116, 102, 88)
+        text_color = (240, 235, 225)
 
         if hovered:
-            fill_color = (70, 84, 110)
-            border_color = (180, 205, 245)
+            fill_color = (58, 64, 76)
+            border_color = (180, 158, 132)
 
-        if button["action"] == f"floor:{self.world.current_floor}":
-            fill_color = (85, 100, 135)
-            border_color = (240, 235, 180)
+        if is_current_floor:
+            fill_color = (90, 74, 56)
+            border_color = (235, 196, 132)
 
         pygame.draw.rect(display, fill_color, rect, border_radius=10)
         pygame.draw.rect(display, border_color, rect, 3, border_radius=10)
-        self.game.draw_text(
+        self.draw_text(
             display,
             button["label"],
-            (245, 245, 245),
+            text_color,
             rect.centerx,
             rect.centery,
             24,
+            center=True,
         )
 
     def apply_action(self, action):
@@ -242,10 +200,9 @@ class DebugHUD:
     def update(self):
         mouse_pos = self.get_mouse_pos()
         mouse_pressed = pygame.mouse.get_pressed()[0]
-        buttons = self.build_buttons()
 
         if mouse_pressed and not self.clicked:
-            for button in buttons:
+            for button in self.build_buttons():
                 if button["rect"].collidepoint(mouse_pos):
                     self.apply_action(button["action"])
                     break
@@ -261,90 +218,69 @@ class DebugHUD:
         panel = self.panel_rect
 
         display.blit(self.overlay, (0, 0))
-        pygame.draw.rect(display, (22, 28, 39), panel, border_radius=18)
-        pygame.draw.rect(display, (110, 130, 170), panel, 4, border_radius=18)
+        pygame.draw.rect(display, (22, 26, 34), panel, border_radius=18)
+        pygame.draw.rect(display, (148, 122, 92), panel, 3, border_radius=18)
 
-        self.game.draw_text(
+        self.draw_text(
             display,
-            "DEBUG HUD",
-            (255, 255, 255),
+            "Панель отладки",
+            (255, 228, 188),
             panel.centerx,
-            panel.top + 38,
-            34,
+            panel.top + 36,
+            36,
+            center=True,
         )
-        self.game.draw_text(
+        self.draw_text(
             display,
-            "F1 - скрыть | ЛКМ - действие",
-            (190, 200, 220),
+            "F1 - скрыть панель",
+            (190, 180, 170),
             panel.centerx,
-            panel.top + 76,
+            panel.top + 72,
+            20,
+            center=True,
+        )
+
+        self.draw_text(
+            display,
+            f"Этаж: {self.world.current_floor}/{self.world.total_floors}    HP: {self.world.player.hp}/{self.world.run_state.max_player_hp}",
+            (240, 236, 228),
+            panel.left + 30,
+            panel.top + 108,
+            24,
+        )
+        self.draw_text(
+            display,
+            f"Жар: {self.world.run_state.currency}    Враги: {len(self.world.enemies)}    Ожидают: {len(self.world.pending_enemy_spawns)}",
+            (220, 214, 204),
+            panel.left + 30,
+            panel.top + 140,
+            22,
+        )
+        self.draw_text(
+            display,
+            f"Комната: {self.world.current_room_id}    Заблокирована: {self.world.locked_room_id}",
+            (190, 186, 182),
+            panel.left + 30,
+            panel.top + 168,
             20,
         )
 
-        self.draw_text_left(
+        separator_color = (92, 82, 74)
+        pygame.draw.line(display, separator_color, (panel.left + 30, panel.top + 198), (panel.right - 30, panel.top + 198), 2)
+        pygame.draw.line(display, separator_color, (panel.left + 30, panel.top + 318), (panel.right - 30, panel.top + 318), 2)
+        pygame.draw.line(display, separator_color, (panel.left + 30, panel.top + 438), (panel.right - 30, panel.top + 438), 2)
+
+        self.draw_text(display, "Этажи", (232, 214, 188), panel.left + 30, panel.top + 204, 22)
+        self.draw_text(display, "Жар", (232, 214, 188), panel.left + 30, panel.top + 324, 22)
+        self.draw_text(
             display,
-            f"Этаж: {self.world.current_floor}/{self.world.total_floors}",
-            (245, 245, 245),
-            panel.left + 36,
-            panel.top + 102,
-            24,
-        )
-        self.draw_text_left(
-            display,
-            f"HP: {self.world.player.hp}/{self.world.run_state.max_player_hp}",
-            (245, 245, 245),
-            panel.left + 36,
-            panel.top + 202,
-            24,
-        )
-        self.draw_text_left(
-            display,
-            f"Жар: {self.world.run_state.currency}",
-            (255, 190, 90),
-            panel.left + 300,
-            panel.top + 202,
-            24,
-        )
-        self.draw_text_left(
-            display,
-            f"Врагов в мире: {len(self.world.enemies)}",
-            (220, 225, 240),
-            panel.left + 470,
-            panel.top + 202,
-            24,
-        )
-        self.draw_text_left(
-            display,
-            f"Ожидают спавна: {len(self.world.pending_enemy_spawns)}",
-            (220, 225, 240),
-            panel.left + 470,
-            panel.top + 232,
+            f"Шаг изменения: {self.heat_amount}",
+            (232, 190, 150),
+            panel.left + 120,
+            panel.top + 324,
             20,
         )
-        self.draw_text_left(
-            display,
-            f"Шаг жара: {self.heat_amount}",
-            (255, 230, 170),
-            panel.left + 136,
-            panel.top + 266,
-            24,
-        )
-        self.draw_text_left(
-            display,
-            f"Текущая комната: {self.world.current_room_id}",
-            (210, 220, 235),
-            panel.left + 36,
-            panel.top + 324,
-            22,
-        )
-        self.draw_text_left(
-            display,
-            f"Заблокированная комната: {self.world.locked_room_id}",
-            (210, 220, 235),
-            panel.left + 360,
-            panel.top + 324,
-            22,
-        )
+        self.draw_text(display, "Действия", (232, 214, 188), panel.left + 30, panel.top + 444, 22)
 
         for button in buttons:
             self.draw_button(display, button, mouse_pos)

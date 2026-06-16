@@ -3,9 +3,7 @@ import random
 import pygame
 from constants import (
     CAMERA_ZOOM,
-    PLAYER_BULLET_DAMAGE_RANGE,
     PLAYER_BULLET_VELOCITY,
-    PLAYER_FIRE_COOLDOWN,
 )
 from entities.bullet import Bullet
 from entities.camera import Camera
@@ -14,10 +12,13 @@ from entities.heat_pickup import HeatPickup
 from entities.level_exit import LevelExit
 from entities.player import Player
 from entities.room_door import RoomDoor
+from entities.shop_keeper import ShopKeeper
 from run_state import RunState
+from shop_content import SHOP_REROLL_COST, roll_shop_offer, roll_shop_offers
 from states.debug_hud import DebugHUD
 from states.game_over import GameOver
 from states.pause_menu import PauseMenu
+from states.shop_menu import ShopMenu
 from states.state import State
 from world.bsp_generator import BSPGenerator
 from world.floor_definitions import FLOOR_DEFINITIONS
@@ -45,7 +46,7 @@ class Game_World(State):
         # обработка пуль и их кулдауна
         self.player_bullets = []
         self.enemies_bullets = []
-        self.time_since_shot = PLAYER_FIRE_COOLDOWN
+        self.time_since_shot = self.run_state.get_player_fire_cooldown()
         
         # враги!
         self.enemies = []
@@ -60,6 +61,10 @@ class Game_World(State):
         self.player_ui = None
         self.damage_texts = []
         self.heat_pickups = []
+        self.shop_room_id = None
+        self.shop_keeper = None
+        self.shop_trigger_armed = True
+        self.shop_offers = []
         self.debug_hud = DebugHUD(self.game, self)
 
         self.build_floor(self.run_state.current_floor)
@@ -81,6 +86,7 @@ class Game_World(State):
             floor_definition.map_height,
             max_depth=floor_definition.max_depth,
             enemy_count=floor_definition.enemy_count,
+            has_shop=floor_definition.has_shop,
         ).generate()
 
         self.level = Level(
@@ -100,7 +106,7 @@ class Game_World(State):
 
         self.player_bullets = []
         self.enemies_bullets = []
-        self.time_since_shot = PLAYER_FIRE_COOLDOWN
+        self.time_since_shot = self.run_state.get_player_fire_cooldown()
         self.enemies = []
         self.pending_enemy_spawns = []
         self.locked_room_id = None
@@ -110,6 +116,10 @@ class Game_World(State):
         self.cleared_room_ids = set()
         self.damage_texts = []
         self.heat_pickups = []
+        self.shop_room_id = generated_level.shop_room_id
+        self.shop_keeper = None
+        self.shop_trigger_armed = True
+        self.shop_offers = []
         self.level.clear_dynamic_blockers()
 
         for index, enemy_spawn in enumerate(generated_level.enemy_spawns):
@@ -128,6 +138,14 @@ class Game_World(State):
         else:
             self.floor_exit = None
             self.floor_exit_room_id = None
+
+        if floor_definition.has_shop and generated_level.shop_spawn is not None:
+            self.shop_keeper = ShopKeeper(
+                self.game,
+                generated_level.shop_spawn,
+                generated_level.shop_room_id,
+            )
+            self.shop_offers = roll_shop_offers()
 
     def advance_to_next_floor(self):
         self.run_state.sync_from_player(self.player)
@@ -152,9 +170,36 @@ class Game_World(State):
         self.game.actions['fire'] = False
 
     def heal_player_to_full(self):
-        self.player.hp = self.run_state.max_player_hp
-        self.run_state.sync_from_player(self.player)
+        self.run_state.heal_to_full()
+        self.run_state.apply_to_player(self.player)
         self.sync_player_ui()
+
+    def try_buy_shop_offer(self, offer_index):
+        if offer_index < 0 or offer_index >= len(self.shop_offers):
+            return False, "Предложение не найдено"
+
+        offer = self.shop_offers[offer_index]
+        success, message = self.run_state.purchase_shop_offer(offer)
+        if not success:
+            self.sync_player_ui()
+            return False, message
+
+        self.run_state.apply_to_player(self.player)
+        self.sync_player_ui()
+        self.shop_offers[offer_index] = roll_shop_offer(offer.effect_type)
+        return True, f"Куплено: {offer.name}"
+
+    def try_reroll_shop_offers(self):
+        if not self.shop_offers:
+            return False, "Лавка пока пуста"
+
+        if not self.run_state.spend_currency(SHOP_REROLL_COST):
+            self.sync_player_ui()
+            return False, "Недостаточно жара для обновления"
+
+        self.shop_offers = roll_shop_offers()
+        self.sync_player_ui()
+        return True, "Ассортимент обновлен"
 
     def clear_current_room_enemies(self):
         target_room_id = self.locked_room_id
@@ -186,6 +231,12 @@ class Game_World(State):
                 return room_id
 
         return None
+
+    def room_to_world_center(self, room):
+        room_x, room_y, room_w, room_h = room
+        center_x = (room_x + room_w // 2) * self.level.tile_size + self.level.tile_size // 2
+        center_y = (room_y + room_h // 2) * self.level.tile_size + self.level.tile_size // 2
+        return center_x, center_y
 
     def is_floor_tile(self, tile_x, tile_y):
         if tile_y < 0 or tile_y >= len(self.level.tiles):
@@ -336,6 +387,9 @@ class Game_World(State):
         if room_id is None:
             return False
 
+        if room_id == self.shop_room_id:
+            return False
+
         spawned_any = False
 
         for spawn_data in self.pending_enemy_spawns[:]:
@@ -355,6 +409,28 @@ class Game_World(State):
             spawned_any = True
 
         return spawned_any
+
+    def update_shop_keeper(self, delta_time):
+        if self.shop_keeper is not None:
+            self.shop_keeper.update(delta_time)
+
+    def update_shop_trigger(self):
+        if self.shop_keeper is None or self.current_room_id != self.shop_room_id:
+            self.shop_trigger_armed = True
+            return False
+
+        player_in_range = self.shop_keeper.can_trigger(self.player.rect)
+        if not player_in_range:
+            self.shop_trigger_armed = True
+            return False
+
+        if not self.shop_trigger_armed:
+            return False
+
+        self.shop_trigger_armed = False
+        shop_menu = ShopMenu(self.game, self)
+        shop_menu.enter_state()
+        return True
 
     def update_floor_exit(self, delta_time, actions):
         if self.floor_exit is None:
@@ -463,6 +539,11 @@ class Game_World(State):
             if spawned_any:
                 self.queue_room_lock(player_room_id)
 
+        self.update_shop_keeper(delta_time)
+        if self.update_shop_trigger():
+            self.game.actions['fire'] = False
+            return
+
         self.time_since_shot += delta_time
         self.camera.smooth_follow(
             self.player.rect.centerx,
@@ -475,7 +556,7 @@ class Game_World(State):
         if self.update_floor_exit(delta_time, actions):
             return
 
-        if actions['fire'] and self.time_since_shot >= PLAYER_FIRE_COOLDOWN:
+        if actions['fire'] and self.time_since_shot >= self.run_state.get_player_fire_cooldown():
             self.spawn_player_bullet()
             self.time_since_shot = 0
 
@@ -569,7 +650,7 @@ class Game_World(State):
 
         # применение всех метрик
         velocity = direction.normalize() * PLAYER_BULLET_VELOCITY
-        damage = random.randint(*PLAYER_BULLET_DAMAGE_RANGE)
+        damage = random.randint(*self.run_state.get_player_bullet_damage_range())
         new_bullet = Bullet(spawn_point, velocity, damage)
         self.player_bullets.append(new_bullet)
 
@@ -643,6 +724,10 @@ class Game_World(State):
         for door in self.active_room_doors:
             door.render(display, self.camera)
 
+    def render_shop_keeper(self, display):
+        if self.shop_keeper is not None:
+            self.shop_keeper.render(display, self.camera)
+
     def render_hud(self, display):
         self.sync_player_ui()
 
@@ -675,6 +760,7 @@ class Game_World(State):
         self.level.render(display, self.camera)
         self.render_floor_exit(display)
         self.render_heat_pickups(display)
+        self.render_shop_keeper(display)
         self.render_room_doors(display)
 
         self.player.render(display, self.camera)

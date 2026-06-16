@@ -45,7 +45,7 @@ class PlayerUI():
             surface,
             f"Этаж {self.current_floor}/{self.total_floors}: {self.floor_name}",
             (255, 255, 255),
-            150,
+            160,
             30,
             24,
         )
