@@ -2,6 +2,7 @@ import math
 
 import pygame
 from states.game_world import Game_World
+from states.settings_menu import SettingsMenu
 from states.state import State
 from uis import Button
 
@@ -93,7 +94,7 @@ class Title(State):
         if action == "play":
             self.game.actions['start'] = True
         elif action == "settings":
-            print("settings")
+            SettingsMenu(self.game).enter_state()
         elif action == "exit":
             self.game.running = False
             self.game.playing = False

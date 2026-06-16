@@ -3,6 +3,7 @@ import time
 
 import pygame
 from constants import WINDOW_HEIGHT, WINDOW_WIDTH
+from game_settings import GameSettings
 from states.title import Title
 
 pygame.init()
@@ -32,6 +33,7 @@ class Game():
         self.dt, self.prev_time = 0, 0 #framerate independance
         self.state_stack = [] #game states management
         self.run_state = None
+        self.settings = GameSettings()
         self.clock = pygame.time.Clock()
         self.load_assets()
         self.load_states()

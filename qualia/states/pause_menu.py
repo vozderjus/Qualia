@@ -1,6 +1,7 @@
 import os
 
 import pygame
+from states.settings_menu import SettingsMenu
 from states.state import State
 
 
@@ -79,7 +80,7 @@ class PauseMenu(State):
         if action == "resume":
             self.exit_state()
         elif action == "settings":
-            print("settings")
+            SettingsMenu(self.game).enter_state()
         elif action == "main_menu":
             self.game.state_stack.pop()
             self.game.state_stack.pop()
