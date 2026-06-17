@@ -37,6 +37,7 @@ class Game():
         self.settings = GameSettings()
         self.audio_available = False
         self.current_music_key = None
+        self.current_music_volume_multiplier = 1.0
         self.player_shot_sounds = []
         self.enemy_hit_sound = None
         self.player_hit_sound = None
@@ -204,15 +205,18 @@ class Game():
             self.player_hit_sound.set_volume(player_hit_volume)
 
         try:
-            pygame.mixer.music.set_volume(self.settings.master_volume)
+            pygame.mixer.music.set_volume(
+                self.settings.master_volume * self.current_music_volume_multiplier
+            )
         except pygame.error:
             return
 
-    def play_music(self, music_key, filename, loops=-1):
+    def play_music(self, music_key, filename, loops=-1, volume_multiplier=1.0):
         if not self.audio_available:
             return
 
         if self.current_music_key == music_key and pygame.mixer.music.get_busy():
+            self.current_music_volume_multiplier = volume_multiplier
             self.apply_audio_settings()
             return
 
@@ -220,12 +224,40 @@ class Game():
             pygame.mixer.music.load(os.path.join(self.audio_dir, filename))
             pygame.mixer.music.play(loops)
             self.current_music_key = music_key
+            self.current_music_volume_multiplier = volume_multiplier
             self.apply_audio_settings()
         except (pygame.error, FileNotFoundError):
             self.current_music_key = None
 
     def ensure_main_menu_music(self):
         self.play_music("main_menu_theme", "main_menu_theme.mp3", -1)
+
+    def ensure_first_floor_music(self):
+        self.play_music(
+            "first_floor_theme",
+            "first_floor_theme.mp3",
+            -1,
+            volume_multiplier=1/2,
+        )
+    def ensure_last_floor_music(self):
+        self.play_music(
+            "last_floor_theme",
+            "last_floor_theme.mp3",
+            -1,
+            volume_multiplier=1/2,
+        )
+
+    def stop_music(self):
+        if not self.audio_available:
+            return
+
+        try:
+            pygame.mixer.music.stop()
+        except pygame.error:
+            return
+
+        self.current_music_key = None
+        self.current_music_volume_multiplier = 1.0
 
     def fadeout_music(self):
         if not self.audio_available:

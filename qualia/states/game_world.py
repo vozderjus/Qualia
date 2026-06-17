@@ -83,6 +83,14 @@ class Game_World(State):
     def build_floor(self, floor_number):
         floor_definition = self.get_floor_definition(floor_number)
         self.current_floor_definition = floor_definition
+
+        if floor_number == 1:
+            self.game.ensure_first_floor_music()
+        elif floor_number == 5:
+            self.game.ensure_last_floor_music()
+        elif self.game.current_music_key == "first_floor_theme" or self.game.current_music_key == "last_floor_theme":
+            self.game.stop_music()
+
         generated_level = BSPGenerator(
             floor_definition.map_width,
             floor_definition.map_height,
