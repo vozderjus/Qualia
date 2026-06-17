@@ -49,7 +49,9 @@ class Title(State):
 
     def update(self, delta_time, actions):
         self.title_time += delta_time
+        self.game.ensure_main_menu_music()
         if actions["start"]:
+            self.game.fadeout_music()
             new_state = Game_World(self.game)
             new_state.enter_state()
         self.game.reset_keys()

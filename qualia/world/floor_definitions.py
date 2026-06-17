@@ -1,7 +1,7 @@
 from dataclasses import dataclass
 
-from entities.boss_enemy import BossEnemy
 from entities.blue_eye_enemy import BlueEyeEnemy
+from entities.boss_enemy import BossEnemy
 from entities.heart_enemy import HeartEnemy
 from entities.orange_eye_enemy import OrangeEye
 from entities.prism_enemy import SniperEnemy

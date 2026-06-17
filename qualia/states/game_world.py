@@ -756,6 +756,7 @@ class Game_World(State):
         damage = random.randint(*self.run_state.get_player_bullet_damage_range())
         new_bullet = Bullet(spawn_point, velocity, damage)
         self.player_bullets.append(new_bullet)
+        self.game.play_random_player_shot_sound()
 
     def spawn_enemy_bullet(
         self,
@@ -789,6 +790,7 @@ class Game_World(State):
                     continue
 
                 if player_bullet.rect.colliderect(enemy.rect):
+                    self.game.play_enemy_hit_sound()
                     self.spawn_damage_text(
                         player_bullet.damage,
                         enemy.rect.midtop,
@@ -809,6 +811,7 @@ class Game_World(State):
     def handle_enemy_to_player_collisions(self):
         for enemy_bullet in self.enemies_bullets[:]:
             if enemy_bullet.rect.colliderect(self.player.rect):
+                self.game.play_player_hit_sound()
                 self.spawn_damage_text(
                     enemy_bullet.damage,
                     self.player.rect.midtop,

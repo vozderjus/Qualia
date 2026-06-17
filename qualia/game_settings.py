@@ -8,6 +8,7 @@ import pygame
 @dataclass
 class GameSettings:
     master_volume: float = 0.8
+    sfx_volume: float = 0.8
 
     def set_master_volume(self, value):
         self.master_volume = max(0.0, min(1.0, value))
@@ -18,8 +19,20 @@ class GameSettings:
     def get_master_volume_percent(self):
         return int(round(self.master_volume * 100))
 
-    def apply_audio_stub(self):
+    def set_sfx_volume(self, value):
+        self.sfx_volume = max(0.0, min(1.0, value))
+
+    def change_sfx_volume(self, delta):
+        self.set_sfx_volume(self.sfx_volume + delta)
+
+    def get_sfx_volume_percent(self):
+        return int(round(self.sfx_volume * 100))
+
+    def apply_audio_stub(self, game=None):
         try:
             pygame.mixer.music.set_volume(self.master_volume)
         except pygame.error:
-            return
+            pass
+
+        if game is not None and hasattr(game, "apply_audio_settings"):
+            game.apply_audio_settings()

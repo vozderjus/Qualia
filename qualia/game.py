@@ -1,4 +1,5 @@
 import os
+import random
 import time
 
 import pygame
@@ -34,6 +35,11 @@ class Game():
         self.state_stack = [] #game states management
         self.run_state = None
         self.settings = GameSettings()
+        self.audio_available = False
+        self.current_music_key = None
+        self.player_shot_sounds = []
+        self.enemy_hit_sound = None
+        self.player_hit_sound = None
         self.clock = pygame.time.Clock()
         self.load_assets()
         self.load_states()
@@ -137,6 +143,122 @@ class Game():
         self.images_dir = os.path.join("images")
         self.audio_dir = os.path.join("audio")
         self.font = pygame.font.Font(os.path.join("font", "PixelifySans-VariableFont_wght.ttf"), 80)
+        self.load_sounds()
+
+    def init_audio(self):
+        if pygame.mixer.get_init() is not None:
+            self.audio_available = True
+            return True
+
+        try:
+            pygame.mixer.init()
+        except pygame.error:
+            self.audio_available = False
+            return False
+
+        self.audio_available = True
+        return True
+
+    def load_sound(self, filename):
+        if not self.audio_available:
+            return None
+
+        try:
+            return pygame.mixer.Sound(os.path.join(self.audio_dir, filename))
+        except (pygame.error, FileNotFoundError):
+            return None
+
+    def load_sounds(self):
+        if not self.init_audio():
+            return
+
+        self.player_shot_sounds = [
+            sound
+            for sound in (
+                self.load_sound("floraphonic-fireball-whoosh-1-179125.mp3"),
+                self.load_sound("floraphonic-fireball-whoosh-2-179126.mp3"),
+                self.load_sound("floraphonic-fireball-whoosh-3-179127.mp3"),
+            )
+            if sound is not None
+        ]
+        self.enemy_hit_sound = self.load_sound("u_68csiaifb5-bulletimpact4-442720.mp3")
+        self.player_hit_sound = self.load_sound("main character impact.mp3")
+        self.apply_audio_settings()
+
+    def apply_audio_settings(self):
+        if not self.audio_available:
+            return
+
+        sfx_base_volume = self.settings.sfx_volume
+        player_shot_volume = sfx_base_volume * 0.35
+        enemy_hit_volume = sfx_base_volume * 0.45
+        player_hit_volume = sfx_base_volume * 0.55
+
+        for sound in self.player_shot_sounds:
+            sound.set_volume(player_shot_volume)
+
+        if self.enemy_hit_sound is not None:
+            self.enemy_hit_sound.set_volume(enemy_hit_volume)
+
+        if self.player_hit_sound is not None:
+            self.player_hit_sound.set_volume(player_hit_volume)
+
+        try:
+            pygame.mixer.music.set_volume(self.settings.master_volume)
+        except pygame.error:
+            return
+
+    def play_music(self, music_key, filename, loops=-1):
+        if not self.audio_available:
+            return
+
+        if self.current_music_key == music_key and pygame.mixer.music.get_busy():
+            self.apply_audio_settings()
+            return
+
+        try:
+            pygame.mixer.music.load(os.path.join(self.audio_dir, filename))
+            pygame.mixer.music.play(loops)
+            self.current_music_key = music_key
+            self.apply_audio_settings()
+        except (pygame.error, FileNotFoundError):
+            self.current_music_key = None
+
+    def ensure_main_menu_music(self):
+        self.play_music("main_menu_theme", "main_menu_theme.mp3", -1)
+
+    def fadeout_music(self):
+        if not self.audio_available:
+            return
+
+        try:
+            fade_ms = int(250 + 1150 * self.settings.master_volume)
+            pygame.mixer.music.fadeout(fade_ms)
+        except pygame.error:
+            return
+
+        self.current_music_key = None
+
+    def play_sound(self, sound):
+        if sound is None:
+            return
+
+        try:
+            sound.play()
+        except pygame.error:
+            return
+
+    def play_random_player_shot_sound(self):
+        if not self.player_shot_sounds:
+            return
+
+        self.play_sound(random.choice(self.player_shot_sounds))
+
+    def play_enemy_hit_sound(self):
+        self.play_sound(self.enemy_hit_sound)
+
+    def play_player_hit_sound(self):
+        self.play_sound(self.player_hit_sound)
 
     # основной стэк где будут подгружаться все состояния
     def load_states(self):
