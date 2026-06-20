@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import pygame
+from entities.attack_command import AttackCommand
 
 
 @dataclass(frozen=True)
@@ -123,12 +124,12 @@ class BossSpreadAttack:
             context.direction_to_target.rotate(angle)
             for angle in self.spread_angles
         ]
-        return {
-            "origin": enemy.get_shot_origin(),
-            "directions": directions,
-            "speed": self.speed,
-            "damage_range": self.damage_range,
-        }
+        return AttackCommand(
+            origin=enemy.get_shot_origin(),
+            directions=tuple(directions),
+            speed=self.speed,
+            damage_range=self.damage_range,
+        )
 
 
 class BossRicochetBurstAttack:
@@ -158,14 +159,14 @@ class BossRicochetBurstAttack:
             context.direction_to_target.rotate(angle)
             for angle in self.spread_angles
         ]
-        return {
-            "origin": enemy.get_shot_origin(),
-            "directions": directions,
-            "speed": self.speed,
-            "damage_range": self.damage_range,
-            "bounce_range": self.bounce_range,
-            "speed_loss_per_bounce": self.speed_loss_per_bounce,
-        }
+        return AttackCommand(
+            origin=enemy.get_shot_origin(),
+            directions=tuple(directions),
+            speed=self.speed,
+            damage_range=self.damage_range,
+            bounce_range=self.bounce_range,
+            speed_loss_per_bounce=self.speed_loss_per_bounce,
+        )
 
 
 class BossNovaAttack:
@@ -186,12 +187,12 @@ class BossNovaAttack:
             )
             for index in range(self.projectile_count)
         ]
-        return {
-            "origin": enemy.get_shot_origin(),
-            "directions": directions,
-            "speed": self.speed,
-            "damage_range": self.damage_range,
-        }
+        return AttackCommand(
+            origin=enemy.get_shot_origin(),
+            directions=tuple(directions),
+            speed=self.speed,
+            damage_range=self.damage_range,
+        )
 
 
 def build_boss_phase_configs():

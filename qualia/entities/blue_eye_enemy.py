@@ -1,7 +1,8 @@
 import pygame
 from constants import BLUE_EYE_COOLDOWN, BLUE_EYE_HP, BLUE_EYE_SPEED
+from entities.attack_behaviors import RicochetShotAttack
 from entities.basic_enemy import Enemy
-from entities.enemies_behavior import ChaseMovement, RicochetShotAttack
+from entities.movement_behaviors import ChaseMovement
 
 
 class BlueEyeEnemy(Enemy):
@@ -22,16 +23,3 @@ class BlueEyeEnemy(Enemy):
         self.preferred_min_range = 150
         self.preferred_max_range = 300
         self.phase = 'idle'
-
-    def update(self, delta_time):
-        if self.update_spawn_state(delta_time):
-            return None
-
-        self.update_fire_timer(delta_time)
-
-        context = self.build_context()
-        move_vector = self.movement_behavior.get_movement_vector(self, context)
-        self.move_with_collision(move_vector, delta_time)
-        context = self.build_context()
-
-        return self.request_attack(context)

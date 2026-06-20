@@ -1,7 +1,7 @@
 import math
 
 import pygame
-from states.game_world import Game_World
+from states.game_world import GameWorld
 from states.settings_menu import SettingsMenu
 from states.state import State
 from uis import Button
@@ -55,7 +55,7 @@ class Title(State):
 
         if action == "play" or actions["start"]:
             self.game.fadeout_music()
-            new_state = Game_World(self.game)
+            new_state = GameWorld(self.game)
             new_state.enter_state()
         elif action == "settings":
             SettingsMenu(self.game).enter_state()

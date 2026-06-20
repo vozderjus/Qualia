@@ -1,8 +1,6 @@
 import sys
 import unittest
 from pathlib import Path
-from unittest.mock import Mock
-
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "qualia"))
 
@@ -28,13 +26,11 @@ class GameSettingsTests(unittest.TestCase):
         settings.set_sfx_volume(-0.5)
         self.assertEqual(settings.sfx_volume, 0.0)
 
-    def test_apply_audio_stub_delegates_to_game_audio_sync(self):
+    def test_master_volume_percent_matches_stored_value(self):
         settings = GameSettings()
-        game = Mock()
+        settings.set_master_volume(0.42)
 
-        settings.apply_audio_stub(game)
-
-        game.apply_audio_settings.assert_called_once()
+        self.assertEqual(settings.get_master_volume_percent(), 42)
 
 
 if __name__ == "__main__":

@@ -150,6 +150,20 @@ class Enemy():
 
         return self.attack_behavior.get_attack_data(self, context)
 
+    def update(self, delta_time):
+        if self.update_spawn_state(delta_time):
+            return None
+
+        self.update_fire_timer(delta_time)
+
+        context = self.build_context()
+        if self.movement_behavior is not None:
+            move_vector = self.movement_behavior.get_movement_vector(self, context)
+            self.move_with_collision(move_vector, delta_time)
+            context = self.build_context()
+
+        return self.request_attack(context)
+
     def update_spawn_state(self, delta_time):
         if not self.is_spawning:
             return False

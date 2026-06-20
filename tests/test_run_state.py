@@ -3,7 +3,6 @@ import unittest
 from pathlib import Path
 from types import SimpleNamespace
 
-
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "qualia"))
 
 from constants import PLAYER_BULLET_DAMAGE_RANGE, PLAYER_MAX_HP

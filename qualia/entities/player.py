@@ -4,9 +4,7 @@ from constants import PLAYER_MAX_HP, PLAYER_SIZE, PLAYER_SPEED
 
 class Player():
     def __init__(self, game, level, spawn_center=None):
-        # ==== TODO ====
         self.current_frame, self.last_frame_update = 0, 0
-        # ==== TODO ====
 
         # получаем изображение игрока
         self.curr_image = pygame.image.load("images/main_character.png").convert_alpha()

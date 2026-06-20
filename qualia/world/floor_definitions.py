@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 
+from audio_manager import MusicTrack
 from entities.blue_eye_enemy import BlueEyeEnemy
 from entities.boss_enemy import BossEnemy
 from entities.heart_enemy import HeartEnemy
@@ -28,6 +29,7 @@ class FloorDefinition:
     boss_min_room_width: int = 0
     boss_min_room_height: int = 0
     boss_min_room_area: int = 0
+    music_track: MusicTrack | None = None
 
 
 FLOOR_DEFINITIONS = (
@@ -41,6 +43,11 @@ FLOOR_DEFINITIONS = (
         enemy_pool=(OrangeEye, ShotgunEnemy),
         floor_tint=(255, 255, 255),
         wall_tint=(245, 245, 255),
+        music_track=MusicTrack(
+            key="first_floor_theme",
+            filename="first_floor_theme.mp3",
+            volume_multiplier=1 / 2,
+        ),
     ),
     FloorDefinition(
         floor_number=2,
@@ -52,6 +59,11 @@ FLOOR_DEFINITIONS = (
         enemy_pool=(OrangeEye, ShotgunEnemy, SniperEnemy, HeartEnemy),
         floor_tint=(220, 240, 255),
         wall_tint=(210, 225, 255),
+        music_track=MusicTrack(
+            key="second_floor_theme",
+            filename="second_floor_theme.mp3",
+            volume_multiplier=1 / 3,
+        ),
     ),
     FloorDefinition(
         floor_number=3,
@@ -64,6 +76,11 @@ FLOOR_DEFINITIONS = (
         floor_tint=(255, 230, 205),
         wall_tint=(240, 210, 185),
         has_shop=True,
+        music_track=MusicTrack(
+            key="third_floor_theme",
+            filename="third_floor_theme.mp3",
+            volume_multiplier=1 / 2,
+        ),
     ),
     FloorDefinition(
         floor_number=4,
@@ -92,5 +109,10 @@ FLOOR_DEFINITIONS = (
         boss_min_room_width=14,
         boss_min_room_height=12,
         boss_min_room_area=180,
+        music_track=MusicTrack(
+            key="last_floor_theme",
+            filename="last_floor_theme.mp3",
+            volume_multiplier=1 / 2,
+        ),
     ),
 )

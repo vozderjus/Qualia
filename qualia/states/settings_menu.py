@@ -1,8 +1,55 @@
-import os
-
 import pygame
 from constants import SETTINGS_CREDITS_LINES, SETTINGS_LORE_PARAGRAPHS
 from states.state import State
+from ui_helpers import (ButtonStyle, PanelStyle, draw_button, draw_panel, draw_text,
+                        get_scaled_mouse_pos, load_font, make_overlay, wrap_text)
+
+PANEL_SIZE = (920, 660)
+PANEL_STYLE = PanelStyle(
+    fill_color=(18, 22, 30),
+    border_color=(164, 144, 112),
+    border_radius=18,
+)
+CONTENT_PANEL_STYLE = PanelStyle(
+    fill_color=(24, 28, 36),
+    border_color=(110, 116, 130),
+    border_radius=12,
+    border_width=2,
+)
+FOOTER_BUTTON_STYLE = ButtonStyle(
+    fill_color=(44, 48, 60),
+    border_color=(160, 146, 120),
+    text_color=(242, 236, 225),
+    hover_fill_color=(58, 64, 78),
+    hover_border_color=(220, 192, 144),
+    active_fill_color=(82, 70, 54),
+    active_border_color=(240, 206, 148),
+    border_radius=10,
+)
+
+PANEL_MARGIN_X = 40
+CONTENT_TOP = 286
+CONTENT_HEIGHT = 230
+CONTENT_HEADER_HEIGHT = 56
+CONTENT_BOTTOM_PADDING = 72
+SCROLLBAR_WIDTH = 8
+SCROLLBAR_OFFSET = 20
+SCROLLBAR_MIN_THUMB_HEIGHT = 36
+SCROLLBAR_TRACK_COLOR = (36, 40, 50)
+SCROLLBAR_THUMB_COLOR = (224, 194, 144)
+SCROLLBAR_ACTIVE_THUMB_COLOR = (245, 214, 164)
+SCROLLBAR_DISABLED_THUMB_COLOR = (88, 92, 104)
+SLIDER_LEFT = 360
+SLIDER_WIDTH = 360
+SLIDER_HEIGHT = 10
+SLIDER_FIRST_ROW_Y = 112
+SLIDER_ROW_GAP = 72
+SLIDER_TRACK_COLOR = (24, 28, 36)
+SLIDER_BORDER_COLOR = (220, 208, 186)
+SLIDER_ACTIVE_BORDER_COLOR = (240, 220, 184)
+SLIDER_THUMB_SIZE = (18, 26)
+SLIDER_HITBOX_INFLATE = (12, 12)
+LINE_STEP = 28
 
 
 class SettingsMenu(State):
@@ -18,22 +65,11 @@ class SettingsMenu(State):
         self.active_slider = None
         self.scrollbar_dragging = False
         self.scroll_drag_offset = 0
-        self.font_path = os.path.join("font", "Keleti-Regular.ttf")
-        self.title_font = pygame.font.Font(
-            self.font_path,
-            38,
-        )
-        self.body_font = pygame.font.Font(
-            self.font_path,
-            22,
-        )
-        self.small_font = pygame.font.Font(
-            self.font_path,
-            18,
-        )
-        self.overlay = pygame.Surface((self.game.GAME_W, self.game.GAME_H), pygame.SRCALPHA)
-        self.overlay.fill((0, 0, 0, 180))
-        self.panel_rect = pygame.Rect(0, 0, 920, 660)
+        self.title_font = load_font(38)
+        self.body_font = load_font(22)
+        self.small_font = load_font(18)
+        self.overlay = make_overlay((self.game.GAME_W, self.game.GAME_H), 180)
+        self.panel_rect = pygame.Rect(0, 0, *PANEL_SIZE)
         self.panel_rect.center = (self.game.GAME_W // 2, self.game.GAME_H // 2)
         self.buttons = self.build_buttons()
 
@@ -42,13 +78,11 @@ class SettingsMenu(State):
         self.frozen_background = self.game.game_canvas.copy()
 
     def build_buttons(self):
-        panel = self.panel_rect
-        footer_y = panel.bottom - 86
-
+        footer_y = self.panel_rect.bottom - 86
         return {
-            "lore": pygame.Rect(panel.left + 40, footer_y, 180, 50),
-            "credits": pygame.Rect(panel.left + 236, footer_y, 180, 50),
-            "back": pygame.Rect(panel.right - 220, footer_y, 180, 50),
+            "lore": pygame.Rect(self.panel_rect.left + 40, footer_y, 180, 50),
+            "credits": pygame.Rect(self.panel_rect.left + 236, footer_y, 180, 50),
+            "back": pygame.Rect(self.panel_rect.right - 220, footer_y, 180, 50),
         }
 
     def update(self, delta_time, actions):
@@ -57,7 +91,7 @@ class SettingsMenu(State):
             self.game.reset_keys()
             return
 
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = get_scaled_mouse_pos(self.game)
         mouse_pressed = pygame.mouse.get_pressed()[0]
         section_layout = self.get_section_layout()
         slider_layouts = self.get_slider_layouts()
@@ -102,41 +136,6 @@ class SettingsMenu(State):
             self.scrollbar_dragging = False
             self.exit_state()
 
-    def draw_text(self, display, text, color, x, y, font, center=False):
-        text_surface = font.render(text, True, color)
-        if center:
-            text_rect = text_surface.get_rect(center=(x, y))
-            display.blit(text_surface, text_rect)
-            return
-
-        display.blit(text_surface, (x, y))
-
-    def wrap_text(self, text, font, max_width):
-        if not text:
-            return [""]
-
-        stripped_text = text.strip()
-        if not stripped_text:
-            return [""]
-
-        words = stripped_text.split()
-        if not words:
-            return [""]
-
-        lines = []
-        current_line = words[0]
-
-        for word in words[1:]:
-            candidate = f"{current_line} {word}"
-            if font.size(candidate)[0] <= max_width:
-                current_line = candidate
-            else:
-                lines.append(current_line)
-                current_line = word
-
-        lines.append(current_line)
-        return lines
-
     def normalize_section_source(self, source_lines):
         if isinstance(source_lines, str):
             return [source_lines]
@@ -145,33 +144,26 @@ class SettingsMenu(State):
 
     def get_content_rect(self):
         return pygame.Rect(
-            self.panel_rect.left + 40,
-            self.panel_rect.top + 286,
-            self.panel_rect.width - 80,
-            230,
+            self.panel_rect.left + PANEL_MARGIN_X,
+            self.panel_rect.top + CONTENT_TOP,
+            self.panel_rect.width - PANEL_MARGIN_X * 2,
+            CONTENT_HEIGHT,
         )
 
     def get_slider_layouts(self):
-        panel = self.panel_rect
-        slider_left = panel.left + 360
-        slider_width = 360
-        slider_height = 10
-        first_row_y = panel.top + 112
-        second_row_y = first_row_y + 72
-
         slider_specs = {
             "master_volume": {
                 "label": "Громкость музыки",
                 "value": self.game.settings.master_volume,
                 "value_percent": self.game.settings.get_master_volume_percent(),
-                "row_y": first_row_y,
+                "row_y": self.panel_rect.top + SLIDER_FIRST_ROW_Y,
                 "color": (110, 178, 212),
             },
             "sfx_volume": {
                 "label": "Громкость эффектов",
                 "value": self.game.settings.sfx_volume,
                 "value_percent": self.game.settings.get_sfx_volume_percent(),
-                "row_y": second_row_y,
+                "row_y": self.panel_rect.top + SLIDER_FIRST_ROW_Y + SLIDER_ROW_GAP,
                 "color": (112, 182, 120),
             },
         }
@@ -179,20 +171,21 @@ class SettingsMenu(State):
         layouts = {}
         for slider_name, slider_data in slider_specs.items():
             bar_rect = pygame.Rect(
-                slider_left,
+                self.panel_rect.left + SLIDER_LEFT,
                 slider_data["row_y"] + 12,
-                slider_width,
-                slider_height,
+                SLIDER_WIDTH,
+                SLIDER_HEIGHT,
             )
             fill_rect = bar_rect.copy()
             fill_rect.width = int(bar_rect.width * slider_data["value"])
             thumb_x = bar_rect.left + int(bar_rect.width * slider_data["value"])
             thumb_x = max(bar_rect.left, min(thumb_x, bar_rect.right))
-            thumb_rect = pygame.Rect(0, 0, 18, 26)
+            thumb_rect = pygame.Rect(0, 0, *SLIDER_THUMB_SIZE)
             thumb_rect.center = (thumb_x, bar_rect.centery)
 
             layouts[slider_name] = {
                 **slider_data,
+                "name": slider_name,
                 "bar_rect": bar_rect,
                 "fill_rect": fill_rect,
                 "thumb_rect": thumb_rect,
@@ -210,7 +203,7 @@ class SettingsMenu(State):
         else:
             return
 
-        self.game.settings.apply_audio_stub(self.game)
+        self.game.sync_audio_settings()
 
     def update_slider_from_mouse(self, slider_name, mouse_x, slider_layouts):
         slider_layout = slider_layouts.get(slider_name)
@@ -223,7 +216,7 @@ class SettingsMenu(State):
 
     def handle_slider_press(self, mouse_pos, slider_layouts):
         for slider_name, slider_layout in slider_layouts.items():
-            thumb_hitbox = slider_layout["thumb_rect"].inflate(12, 12)
+            thumb_hitbox = slider_layout["thumb_rect"].inflate(*SLIDER_HITBOX_INFLATE)
             if thumb_hitbox.collidepoint(mouse_pos) or slider_layout["bar_rect"].collidepoint(mouse_pos):
                 self.active_slider = slider_name
                 self.update_slider_from_mouse(slider_name, mouse_pos[0], slider_layouts)
@@ -245,7 +238,7 @@ class SettingsMenu(State):
                 body_lines.append("")
                 continue
 
-            body_lines.extend(self.wrap_text(line, self.body_font, max_width))
+            body_lines.extend(wrap_text(line, self.body_font, max_width))
             if self.current_section == "lore":
                 body_lines.append("")
 
@@ -258,22 +251,21 @@ class SettingsMenu(State):
         content_rect = self.get_content_rect()
         viewport_rect = pygame.Rect(
             content_rect.left + 16,
-            content_rect.top + 56,
+            content_rect.top + CONTENT_HEADER_HEIGHT,
             content_rect.width - 56,
-            content_rect.height - 72,
+            content_rect.height - CONTENT_BOTTOM_PADDING,
         )
         scrollbar_rect = pygame.Rect(
-            content_rect.right - 20,
+            content_rect.right - SCROLLBAR_OFFSET,
             viewport_rect.top,
-            8,
+            SCROLLBAR_WIDTH,
             viewport_rect.height,
         )
 
         header, body_lines = self.get_section_lines(viewport_rect.width - 10)
-        line_step = 28
         content_height = max(
             viewport_rect.height,
-            len(body_lines) * line_step + 8,
+            len(body_lines) * LINE_STEP + 8,
         )
         max_scroll = max(0, content_height - viewport_rect.height)
         scroll_value = min(self.section_scroll[self.current_section], max_scroll)
@@ -284,7 +276,7 @@ class SettingsMenu(State):
 
         if max_scroll > 0:
             thumb_height = max(
-                36,
+                SCROLLBAR_MIN_THUMB_HEIGHT,
                 int(scrollbar_rect.height * (viewport_rect.height / content_height)),
             )
             track_range = scrollbar_rect.height - thumb_height
@@ -306,7 +298,6 @@ class SettingsMenu(State):
             "thumb_rect": thumb_rect,
             "header": header,
             "body_lines": body_lines,
-            "line_step": line_step,
             "content_height": content_height,
             "max_scroll": max_scroll,
             "scroll_value": scroll_value,
@@ -354,87 +345,59 @@ class SettingsMenu(State):
         progress = (thumb_top - scrollbar_rect.top) / track_range
         self.set_scroll_value(progress * max_scroll, max_scroll)
 
-    def draw_button(self, display, action, label, hovered, active=False):
-        rect = self.buttons[action]
-        fill_color = (44, 48, 60)
-        border_color = (160, 146, 120)
-        text_color = (242, 236, 225)
-
-        if hovered:
-            fill_color = (58, 64, 78)
-            border_color = (220, 192, 144)
-
-        if active:
-            fill_color = (82, 70, 54)
-            border_color = (240, 206, 148)
-
-        pygame.draw.rect(display, fill_color, rect, border_radius=10)
-        pygame.draw.rect(display, border_color, rect, 3, border_radius=10)
-        self.draw_text(
-            display,
-            label,
-            text_color,
-            rect.centerx,
-            rect.centery,
-            self.body_font,
-            center=True,
-        )
-
     def render_volume_row(self, display, slider_layout, hovered):
-        label_y = slider_layout["row_y"]
-        bar_rect = slider_layout["bar_rect"]
-        fill_rect = slider_layout["fill_rect"]
-        thumb_rect = slider_layout["thumb_rect"]
-        track_color = (24, 28, 36)
-        border_color = (220, 208, 186)
-        thumb_color = slider_layout["color"]
+        border_color = SLIDER_ACTIVE_BORDER_COLOR if (
+            hovered or self.active_slider == slider_layout["name"]
+        ) else SLIDER_BORDER_COLOR
 
-        if hovered or self.active_slider is not None:
-            border_color = (240, 220, 184)
-
-        self.draw_text(
+        draw_text(
             display,
             slider_layout["label"],
             (255, 241, 213),
             self.panel_rect.left + 40,
-            label_y,
+            slider_layout["row_y"],
             self.body_font,
         )
-        self.draw_text(
+        draw_text(
             display,
             f"{slider_layout['value_percent']}%",
             (245, 245, 245),
             self.panel_rect.right - 88,
-            label_y,
+            slider_layout["row_y"],
             self.body_font,
             center=True,
         )
 
-        pygame.draw.rect(display, track_color, bar_rect, border_radius=8)
-        if fill_rect.width > 0:
-            pygame.draw.rect(display, slider_layout["color"], fill_rect, border_radius=8)
-        pygame.draw.rect(display, border_color, bar_rect, 2, border_radius=8)
-        pygame.draw.rect(display, thumb_color, thumb_rect, border_radius=9)
-        pygame.draw.rect(display, (245, 236, 214), thumb_rect, 2, border_radius=9)
+        pygame.draw.rect(display, SLIDER_TRACK_COLOR, slider_layout["bar_rect"], border_radius=8)
+        if slider_layout["fill_rect"].width > 0:
+            pygame.draw.rect(display, slider_layout["color"], slider_layout["fill_rect"], border_radius=8)
+        pygame.draw.rect(display, border_color, slider_layout["bar_rect"], 2, border_radius=8)
+        pygame.draw.rect(display, slider_layout["color"], slider_layout["thumb_rect"], border_radius=9)
+        pygame.draw.rect(display, (245, 236, 214), slider_layout["thumb_rect"], 2, border_radius=9)
+
+    def render_volume_block(self, display):
+        mouse_pos = get_scaled_mouse_pos(self.game)
+        slider_layouts = self.get_slider_layouts()
+
+        for slider_name in ("master_volume", "sfx_volume"):
+            slider_layout = slider_layouts[slider_name]
+            hovered = (
+                slider_layout["bar_rect"].collidepoint(mouse_pos)
+                or slider_layout["thumb_rect"].inflate(*SLIDER_HITBOX_INFLATE).collidepoint(mouse_pos)
+            )
+            self.render_volume_row(display, slider_layout, hovered)
 
     def render_section_content(self, display):
         section_layout = self.get_section_layout()
         content_rect = section_layout["content_rect"]
         viewport_rect = section_layout["viewport_rect"]
-        scrollbar_rect = section_layout["scrollbar_rect"]
-        thumb_rect = section_layout["thumb_rect"]
-        header = section_layout["header"]
         body_lines = section_layout["body_lines"]
-        line_step = section_layout["line_step"]
         scroll_value = section_layout["scroll_value"]
-        content_height = section_layout["content_height"]
 
-        pygame.draw.rect(display, (24, 28, 36), content_rect, border_radius=12)
-        pygame.draw.rect(display, (110, 116, 130), content_rect, 2, border_radius=12)
-
-        self.draw_text(
+        draw_panel(display, content_rect, CONTENT_PANEL_STYLE)
+        draw_text(
             display,
-            header,
+            section_layout["header"],
             (255, 229, 188),
             content_rect.left + 16,
             content_rect.top + 14,
@@ -442,7 +405,7 @@ class SettingsMenu(State):
         )
 
         text_surface = pygame.Surface(
-            (viewport_rect.width, content_height),
+            (viewport_rect.width, section_layout["content_height"]),
             pygame.SRCALPHA,
         )
 
@@ -451,7 +414,7 @@ class SettingsMenu(State):
             if line:
                 line_surface = self.body_font.render(line, True, (228, 228, 232))
                 text_surface.blit(line_surface, (0, y))
-            y += line_step
+            y += LINE_STEP
 
         display.blit(
             text_surface,
@@ -464,14 +427,11 @@ class SettingsMenu(State):
             ),
         )
 
-        pygame.draw.rect(display, (36, 40, 50), scrollbar_rect, border_radius=6)
+        pygame.draw.rect(display, SCROLLBAR_TRACK_COLOR, section_layout["scrollbar_rect"], border_radius=6)
+        thumb_color = SCROLLBAR_DISABLED_THUMB_COLOR
         if section_layout["max_scroll"] > 0:
-            thumb_color = (224, 194, 144)
-            if self.scrollbar_dragging:
-                thumb_color = (245, 214, 164)
-            pygame.draw.rect(display, thumb_color, thumb_rect, border_radius=6)
-        else:
-            pygame.draw.rect(display, (88, 92, 104), thumb_rect, border_radius=6)
+            thumb_color = SCROLLBAR_ACTIVE_THUMB_COLOR if self.scrollbar_dragging else SCROLLBAR_THUMB_COLOR
+        pygame.draw.rect(display, thumb_color, section_layout["thumb_rect"], border_radius=6)
 
     def render(self, display):
         if self.frozen_background is not None:
@@ -481,13 +441,11 @@ class SettingsMenu(State):
         else:
             display.fill((0, 0, 0))
 
-        mouse_pos = pygame.mouse.get_pos()
+        mouse_pos = get_scaled_mouse_pos(self.game)
 
         display.blit(self.overlay, (0, 0))
-        pygame.draw.rect(display, (18, 22, 30), self.panel_rect, border_radius=18)
-        pygame.draw.rect(display, (164, 144, 112), self.panel_rect, 3, border_radius=18)
-
-        self.draw_text(
+        draw_panel(display, self.panel_rect, PANEL_STYLE)
+        draw_text(
             display,
             "Настройки",
             (255, 239, 205),
@@ -500,35 +458,29 @@ class SettingsMenu(State):
         self.render_volume_block(display)
         self.render_section_content(display)
 
-        self.draw_button(
+        draw_button(
             display,
-            "lore",
+            self.buttons["lore"],
             "Лор",
-            self.buttons["lore"].collidepoint(mouse_pos),
+            mouse_pos,
+            self.body_font,
+            FOOTER_BUTTON_STYLE,
             active=self.current_section == "lore",
         )
-        self.draw_button(
+        draw_button(
             display,
-            "credits",
-            "Credits",
-            self.buttons["credits"].collidepoint(mouse_pos),
+            self.buttons["credits"],
+            "Титры",
+            mouse_pos,
+            self.body_font,
+            FOOTER_BUTTON_STYLE,
             active=self.current_section == "credits",
         )
-        self.draw_button(
+        draw_button(
             display,
-            "back",
+            self.buttons["back"],
             "Назад",
-            self.buttons["back"].collidepoint(mouse_pos),
+            mouse_pos,
+            self.body_font,
+            FOOTER_BUTTON_STYLE,
         )
-
-    def render_volume_block(self, display):
-        mouse_pos = pygame.mouse.get_pos()
-        slider_layouts = self.get_slider_layouts()
-
-        for slider_name in ("master_volume", "sfx_volume"):
-            slider_layout = slider_layouts[slider_name]
-            hovered = (
-                slider_layout["bar_rect"].collidepoint(mouse_pos)
-                or slider_layout["thumb_rect"].inflate(12, 12).collidepoint(mouse_pos)
-            )
-            self.render_volume_row(display, slider_layout, hovered)

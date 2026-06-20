@@ -1,8 +1,48 @@
-import os
-
 import pygame
 from shop_content import SHOP_REROLL_COST
 from states.state import State
+from ui_helpers import (ButtonStyle, PanelStyle, draw_button, draw_panel, draw_text,
+                        get_scaled_mouse_pos, load_font, make_overlay, wrap_text)
+
+PANEL_SIZE = (1020, 560)
+PANEL_STYLE = PanelStyle(
+    fill_color=(20, 26, 34),
+    border_color=(154, 124, 88),
+    border_radius=20,
+    border_width=4,
+)
+ACTION_BUTTON_STYLE = ButtonStyle(
+    fill_color=(44, 48, 58),
+    border_color=(132, 115, 98),
+    text_color=(246, 236, 216),
+    hover_fill_color=(88, 73, 59),
+    hover_border_color=(236, 199, 138),
+    disabled_fill_color=(34, 34, 38),
+    disabled_border_color=(82, 76, 72),
+    disabled_text_color=(145, 140, 136),
+)
+
+CARD_WIDTH = 280
+CARD_HEIGHT = 300
+CARD_GAP = 28
+CARD_TOP = 150
+BUY_BUTTON_MARGIN_X = 20
+BUY_BUTTON_HEIGHT = 48
+BUY_BUTTON_BOTTOM_OFFSET = 74
+BUY_BUTTON_LABEL = "Купить"
+DESCRIPTION_TOP = 104
+DESCRIPTION_LINE_STEP = 24
+DESCRIPTION_MAX_LINES = 3
+PRICE_TOP = 182
+REROLL_BUTTON_SIZE = (290, 52)
+CLOSE_BUTTON_SIZE = (150, 52)
+FOOTER_BUTTON_Y_OFFSET = 90
+MESSAGE_DURATION = 1.75
+REROLL_BUTTON_LEFT_OFFSET = 70
+CLOSE_BUTTON_RIGHT_OFFSET = 220
+CURRENCY_LABEL_CENTER_OFFSET = 120
+REROLL_INFO_CENTER_OFFSET = 240
+MESSAGE_BOTTOM_OFFSET = 28
 
 
 class ShopMenu(State):
@@ -13,78 +53,48 @@ class ShopMenu(State):
         self.message = ""
         self.message_color = (220, 220, 220)
         self.message_timer = 0.0
-        self.font_path = os.path.join("font", "Keleti-Regular.ttf")
-
-        self.overlay = pygame.Surface((self.game.GAME_W, self.game.GAME_H), pygame.SRCALPHA)
-        self.overlay.fill((6, 8, 14, 210))
-
-        self.panel_rect = pygame.Rect(0, 0, 1020, 560)
+        self.title_font = load_font(36)
+        self.heading_font = load_font(28)
+        self.body_font = load_font(22)
+        self.small_font = load_font(20)
+        self.button_font = load_font(24)
+        self.overlay = make_overlay((self.game.GAME_W, self.game.GAME_H), 210, color=(6, 8, 14))
+        self.panel_rect = pygame.Rect(0, 0, *PANEL_SIZE)
         self.panel_rect.center = (self.game.GAME_W // 2, self.game.GAME_H // 2)
         self.card_rects = self.build_card_rects()
-        self.reroll_rect = pygame.Rect(self.panel_rect.left + 70, self.panel_rect.bottom - 90, 290, 52)
-        self.close_rect = pygame.Rect(self.panel_rect.right - 220, self.panel_rect.bottom - 90, 150, 52)
-
+        self.reroll_rect = pygame.Rect(
+            self.panel_rect.left + REROLL_BUTTON_LEFT_OFFSET,
+            self.panel_rect.bottom - FOOTER_BUTTON_Y_OFFSET,
+            *REROLL_BUTTON_SIZE,
+        )
+        self.close_rect = pygame.Rect(
+            self.panel_rect.right - CLOSE_BUTTON_RIGHT_OFFSET,
+            self.panel_rect.bottom - FOOTER_BUTTON_Y_OFFSET,
+            *CLOSE_BUTTON_SIZE,
+        )
         self.game.reset_keys()
 
     def build_card_rects(self):
-        card_width = 280
-        card_height = 300
-        gap = 28
-        total_width = card_width * 3 + gap * 2
+        total_width = CARD_WIDTH * 3 + CARD_GAP * 2
         start_x = self.panel_rect.centerx - total_width // 2
-        y = self.panel_rect.top + 150
-
+        y = self.panel_rect.top + CARD_TOP
         return [
-            pygame.Rect(start_x + index * (card_width + gap), y, card_width, card_height)
+            pygame.Rect(start_x + index * (CARD_WIDTH + CARD_GAP), y, CARD_WIDTH, CARD_HEIGHT)
             for index in range(3)
         ]
 
-    def get_mouse_pos(self):
-        mouse_x, mouse_y = pygame.mouse.get_pos()
-        scale_x = self.game.GAME_W / self.game.SCREEN_WIDTH
-        scale_y = self.game.GAME_H / self.game.SCREEN_HEIGHT
-        return mouse_x * scale_x, mouse_y * scale_y
+    def get_buy_rect(self, card_rect):
+        return pygame.Rect(
+            card_rect.left + BUY_BUTTON_MARGIN_X,
+            card_rect.bottom - BUY_BUTTON_BOTTOM_OFFSET,
+            card_rect.width - BUY_BUTTON_MARGIN_X * 2,
+            BUY_BUTTON_HEIGHT,
+        )
 
     def set_message(self, text, color):
         self.message = text
         self.message_color = color
-        self.message_timer = 1.75
-
-    def draw_left_text(self, display, text, color, x, y, size=22):
-        font = pygame.font.Font(self.font_path, size)
-        text_surface = font.render(text, True, color)
-        display.blit(text_surface, (x, y))
-
-    def draw_center_text(self, display, text, color, x, y, size=22):
-        font = pygame.font.Font(self.font_path, size)
-        text_surface = font.render(text, True, color)
-        text_rect = text_surface.get_rect(center=(x, y))
-        display.blit(text_surface, text_rect)
-
-    def draw_button(self, display, rect, label, mouse_pos, enabled=True):
-        hovered = rect.collidepoint(mouse_pos)
-        fill_color = (44, 48, 58)
-        border_color = (132, 115, 98)
-        text_color = (246, 236, 216)
-
-        if not enabled:
-            fill_color = (34, 34, 38)
-            border_color = (82, 76, 72)
-            text_color = (145, 140, 136)
-        elif hovered:
-            fill_color = (88, 73, 59)
-            border_color = (236, 199, 138)
-
-        pygame.draw.rect(display, fill_color, rect, border_radius=12)
-        pygame.draw.rect(display, border_color, rect, 3, border_radius=12)
-        self.draw_center_text(
-            display,
-            label,
-            text_color,
-            rect.centerx,
-            rect.centery,
-            24,
-        )
+        self.message_timer = MESSAGE_DURATION
 
     def draw_offer_card(self, display, offer, rect, mouse_pos):
         hovered = rect.collidepoint(mouse_pos)
@@ -104,39 +114,56 @@ class ShopMenu(State):
         pygame.draw.rect(display, fill_color, rect, border_radius=16)
         pygame.draw.rect(display, border_color, rect, 4, border_radius=16)
 
-        self.draw_center_text(
+        draw_text(
             display,
             offer.name,
             text_color,
             rect.centerx,
             rect.top + 42,
-            28,
+            self.heading_font,
+            center=True,
         )
-        self.draw_left_text(
-            display,
+
+        description_lines = wrap_text(
             offer.description,
-            (225, 225, 230),
-            rect.left + 20,
-            rect.top + 104,
-            20,
-        )
-        self.draw_left_text(
+            self.small_font,
+            rect.width - BUY_BUTTON_MARGIN_X * 2,
+        )[:DESCRIPTION_MAX_LINES]
+        for line_index, line in enumerate(description_lines):
+            draw_text(
+                display,
+                line,
+                (225, 225, 230),
+                rect.left + BUY_BUTTON_MARGIN_X,
+                rect.top + DESCRIPTION_TOP + line_index * DESCRIPTION_LINE_STEP,
+                self.small_font,
+            )
+
+        draw_text(
             display,
             f"Цена: {offer.cost} жара",
             (255, 190, 80) if affordable else (210, 100, 100),
-            rect.left + 20,
-            rect.top + 166,
-            24,
+            rect.left + BUY_BUTTON_MARGIN_X,
+            rect.top + PRICE_TOP,
+            self.body_font,
         )
 
-        buy_rect = pygame.Rect(rect.left + 20, rect.bottom - 74, rect.width - 40, 48)
-        self.draw_button(display, buy_rect, "Купить", mouse_pos, affordable)
+        buy_rect = self.get_buy_rect(rect)
+        draw_button(
+            display,
+            buy_rect,
+            BUY_BUTTON_LABEL,
+            mouse_pos,
+            self.button_font,
+            ACTION_BUTTON_STYLE,
+            enabled=affordable,
+        )
         return buy_rect
 
     def update(self, delta_time, actions):
         self.message_timer = max(0.0, self.message_timer - delta_time)
 
-        mouse_pos = self.get_mouse_pos()
+        mouse_pos = get_scaled_mouse_pos(self.game)
         mouse_pressed = pygame.mouse.get_pressed()[0]
 
         if mouse_pressed and not self.clicked:
@@ -153,8 +180,7 @@ class ShopMenu(State):
                     self.set_message(message, (245, 135, 135))
             else:
                 for index, rect in enumerate(self.card_rects):
-                    buy_rect = pygame.Rect(rect.left + 20, rect.bottom - 74, rect.width - 40, 48)
-                    if buy_rect.collidepoint(mouse_pos):
+                    if self.get_buy_rect(rect).collidepoint(mouse_pos):
                         success, message = self.world.try_buy_shop_offer(index)
                         if success:
                             self.set_message(message, (155, 245, 180))
@@ -171,55 +197,66 @@ class ShopMenu(State):
 
     def render(self, display):
         self.prev_state.render(display)
-        mouse_pos = self.get_mouse_pos()
+        mouse_pos = get_scaled_mouse_pos(self.game)
 
         display.blit(self.overlay, (0, 0))
-        pygame.draw.rect(display, (20, 26, 34), self.panel_rect, border_radius=20)
-        pygame.draw.rect(display, (154, 124, 88), self.panel_rect, 4, border_radius=20)
-
-        self.draw_center_text(
+        draw_panel(display, self.panel_rect, PANEL_STYLE)
+        draw_text(
             display,
             "Лавка жаровщика",
             (255, 230, 190),
             self.panel_rect.centerx,
             self.panel_rect.top + 42,
-            36,
+            self.title_font,
+            center=True,
         )
-        self.draw_center_text(
+        draw_text(
             display,
             f"Жар: {self.world.run_state.currency}",
             (255, 190, 80),
-            self.panel_rect.left + 120,
+            self.panel_rect.left + CURRENCY_LABEL_CENTER_OFFSET,
             self.panel_rect.top + 92,
-            24,
+            self.body_font,
+            center=True,
         )
-        self.draw_center_text(
+        draw_text(
             display,
             f"Обновить ассортимент: {SHOP_REROLL_COST} жара",
             (220, 220, 230),
-            self.panel_rect.right - 240,
+            self.panel_rect.right - REROLL_INFO_CENTER_OFFSET,
             self.panel_rect.top + 92,
-            22,
+            self.body_font,
+            center=True,
         )
 
         for index, offer in enumerate(self.world.shop_offers):
             self.draw_offer_card(display, offer, self.card_rects[index], mouse_pos)
 
-        self.draw_button(
+        draw_button(
             display,
             self.reroll_rect,
             "Обновить список",
             mouse_pos,
-            self.world.run_state.currency >= SHOP_REROLL_COST,
+            self.button_font,
+            ACTION_BUTTON_STYLE,
+            enabled=self.world.run_state.currency >= SHOP_REROLL_COST,
         )
-        self.draw_button(display, self.close_rect, "Уйти", mouse_pos, True)
+        draw_button(
+            display,
+            self.close_rect,
+            "Уйти",
+            mouse_pos,
+            self.button_font,
+            ACTION_BUTTON_STYLE,
+        )
 
         if self.message_timer > 0.0:
-            self.draw_center_text(
+            draw_text(
                 display,
                 self.message,
                 self.message_color,
                 self.panel_rect.centerx,
-                self.panel_rect.bottom - 28,
-                22,
+                self.panel_rect.bottom - MESSAGE_BOTTOM_OFFSET,
+                self.body_font,
+                center=True,
             )
