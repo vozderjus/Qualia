@@ -50,25 +50,29 @@ class Title(State):
     def update(self, delta_time, actions):
         self.title_time += delta_time
         self.game.ensure_main_menu_music()
-        if actions["start"]:
+
+        action = self.get_menu_action()
+
+        if action == "play" or actions["start"]:
             self.game.fadeout_music()
             new_state = Game_World(self.game)
             new_state.enter_state()
+        elif action == "settings":
+            SettingsMenu(self.game).enter_state()
+        elif action == "exit":
+            self.game.running = False
+            self.game.playing = False
+
         self.game.reset_keys()
 
-    def draw_menu(self, display):
+    def get_menu_action(self):
         action = None
         mouse_pos = pygame.mouse.get_pos()
         mouse_pressed = pygame.mouse.get_pressed()[0]
 
         for name, button_states in self.buttons.items():
             normal_button = button_states["normal"]
-            active_button = button_states["active"]
-
             hovered = normal_button.rect.collidepoint(mouse_pos)
-            current_button = active_button if hovered else normal_button
-            current_button.draw(display)
-
             if hovered and mouse_pressed and not self.clicked:
                 self.clicked = True
                 action = name
@@ -78,13 +82,22 @@ class Title(State):
 
         return action
 
+    def render_menu(self, display):
+        mouse_pos = pygame.mouse.get_pos()
+
+        for button_states in self.buttons.values():
+            normal_button = button_states["normal"]
+            active_button = button_states["active"]
+            hovered = normal_button.rect.collidepoint(mouse_pos)
+            current_button = active_button if hovered else normal_button
+            current_button.draw(display)
+
     def render(self, display):
         offset_y = math.sin(self.title_time * 2) * 10
-        
-        display.blit(self.bg, (0, 0))
-        action = self.draw_menu(display)
 
-        
+        display.blit(self.bg, (0, 0))
+        self.render_menu(display)
+
         self.game.draw_text(
             display,
             "Qualia",
@@ -92,11 +105,3 @@ class Title(State):
             self.game.GAME_W / 2,
             90 + offset_y,
         )
-
-        if action == "play":
-            self.game.actions['start'] = True
-        elif action == "settings":
-            SettingsMenu(self.game).enter_state()
-        elif action == "exit":
-            self.game.running = False
-            self.game.playing = False

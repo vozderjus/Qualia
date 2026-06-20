@@ -1,5 +1,3 @@
-# === MADE BY AI ===
-
 from dataclasses import dataclass
 
 import pygame

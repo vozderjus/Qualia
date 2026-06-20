@@ -27,7 +27,6 @@ clock = pygame.time.Clock()
 
 class Game_World(State):
     def __init__(self, game, run_state=None):
-        # эээ основные импорты, создаие импорта и тп
         State.__init__(self, game)
         self.floor_definitions = FLOOR_DEFINITIONS
         self.total_floors = len(self.floor_definitions)
@@ -41,12 +40,10 @@ class Game_World(State):
         self.current_room_id = None
         self.camera = None
 
-        # обработка пуль и их кулдауна
         self.player_bullets = []
         self.enemies_bullets = []
         self.time_since_shot = self.run_state.get_player_fire_cooldown()
-        
-        # враги!
+
         self.enemies = []
         self.pending_enemy_spawns = []
         self.floor_exit = None
@@ -585,7 +582,6 @@ class Game_World(State):
         if not self.has_living_room_enemies(self.locked_room_id):
             self.unlock_room()
 
-    # ======== ВСЕ АПДЕЙТЫ ========
     def update(self, delta_time, actions):
         if self.complete_boss_victory():
             return
@@ -661,7 +657,7 @@ class Game_World(State):
             return
 
     def update_player_bullets(self, delta_time):
-        for bullet in self.player_bullets[:]: # проходимся по копии списка 
+        for bullet in self.player_bullets[:]:
             bullet.update(delta_time)
 
             level_rect = pygame.Rect(0, 0, self.level.pixel_width, self.level.pixel_height)
@@ -737,15 +733,12 @@ class Game_World(State):
                 self.enemies_bullets.remove(bullet)
                 continue
     
-    # ======== ВСЕ СПАВНЫ ========
     def spawn_player_bullet(self):
-        # берем необходимые координаты
         spawn_point = self.player.get_shot_origin()
         mouse_x, mouse_y = pygame.mouse.get_pos()
         scale_x = self.game.GAME_W / self.game.SCREEN_WIDTH
         scale_y = self.game.GAME_H / self.game.SCREEN_HEIGHT
 
-        # высчитываем экранные координаты мыши в мировые
         world_mouse = self.camera.screen_to_world(
             mouse_x,
             mouse_y,
@@ -753,17 +746,14 @@ class Game_World(State):
             scale_y,
         )
 
-        # направление вектора стрельбы (для мыши)
         direction = pygame.Vector2(
             world_mouse[0] - spawn_point[0],
             world_mouse[1] - spawn_point[1],
         )
 
-        # байпасс если вдруг длина вектора 0 (чтоб не упала нормализация)
         if direction.length_squared() == 0:
             return
 
-        # применение всех метрик
         velocity = direction.normalize() * PLAYER_BULLET_VELOCITY
         damage = random.randint(*self.run_state.get_player_bullet_damage_range())
         new_bullet = Bullet(spawn_point, velocity, damage)

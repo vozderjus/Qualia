@@ -1,5 +1,3 @@
-# === MADE BY AI ===
-
 import os
 
 import pygame
