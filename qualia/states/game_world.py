@@ -86,9 +86,13 @@ class Game_World(State):
 
         if floor_number == 1:
             self.game.ensure_first_floor_music()
+        elif floor_number == 2:
+            self.game.ensure_second_floor_music()
+        elif floor_number == 3:
+            self.game.ensure_third_floor_music()
         elif floor_number == 5:
             self.game.ensure_last_floor_music()
-        elif self.game.current_music_key == "first_floor_theme" or self.game.current_music_key == "last_floor_theme":
+        elif self.game.current_music_key in ["first_floor_theme", "second_floor_theme", "third_floor_theme", "last_floor_theme"]:
             self.game.stop_music()
 
         generated_level = BSPGenerator(

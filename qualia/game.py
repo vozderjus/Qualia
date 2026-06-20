@@ -239,6 +239,22 @@ class Game():
             -1,
             volume_multiplier=1/2,
         )
+
+    def ensure_second_floor_music(self):
+        self.play_music(
+            "second_floor_theme",
+            "second_floor_theme.mp3",
+            -1,
+            volume_multiplier=1/3,
+        )
+
+    def ensure_third_floor_music(self):
+        self.play_music(
+            "third_floor_theme",
+            "third_floor_theme.mp3",
+            -1,
+            volume_multiplier=1/2,
+        )
     def ensure_last_floor_music(self):
         self.play_music(
             "last_floor_theme",
@@ -246,6 +262,7 @@ class Game():
             -1,
             volume_multiplier=1/2,
         )
+
 
     def stop_music(self):
         if not self.audio_available:
