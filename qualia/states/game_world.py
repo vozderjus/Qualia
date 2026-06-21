@@ -62,10 +62,14 @@ class GameWorld(State):
         self.shop_trigger_armed = True
         self.shop_offers = []
         self.current_floor_has_shop = False
+        self.discovered_minimap_tiles = set()
+        self.visible_minimap_tiles = set()
+        self.discovered_room_ids = set()
         self.debug_hud = DebugHUD(self.game, self)
         self.floor_builder = FloorBuilder()
         self.encounter_manager = EncounterManager(self)
         self.combat_system = CombatSystem(self)
+        self.total_floor_hostiles = 0
 
         self.build_floor(self.run_state.current_floor)
 
@@ -81,6 +85,59 @@ class GameWorld(State):
     def should_spawn_shop(self, floor_definition):
         chance = max(0.0, min(1.0, floor_definition.shop_spawn_chance))
         return random.random() < chance
+
+    def add_minimap_tile_rect(self, tiles_set, left, top, right, bottom):
+        max_y = len(self.level.tiles) - 1
+        max_x = len(self.level.tiles[0]) - 1
+        clamped_left = max(0, left)
+        clamped_top = max(0, top)
+        clamped_right = min(max_x, right)
+        clamped_bottom = min(max_y, bottom)
+
+        for tile_y in range(clamped_top, clamped_bottom + 1):
+            for tile_x in range(clamped_left, clamped_right + 1):
+                tiles_set.add((tile_x, tile_y))
+
+    def reveal_minimap_room(self, tiles_set, room_id):
+        if room_id is None or room_id < 0 or room_id >= len(self.rooms):
+            return
+
+        room_x, room_y, room_w, room_h = self.rooms[room_id]
+        self.discovered_room_ids.add(room_id)
+        self.add_minimap_tile_rect(
+            tiles_set,
+            room_x - 1,
+            room_y - 1,
+            room_x + room_w,
+            room_y + room_h,
+        )
+
+    def reveal_minimap_player_surroundings(self, tiles_set, radius=4):
+        tile_x, tile_y = self.level.world_point_to_tile(*self.player.rect.center)
+        self.add_minimap_tile_rect(
+            tiles_set,
+            tile_x - radius,
+            tile_y - radius,
+            tile_x + radius,
+            tile_y + radius,
+        )
+
+    def reveal_minimap_area(self, room_id=None):
+        visible_tiles = set()
+        self.reveal_minimap_player_surroundings(visible_tiles)
+
+        if (
+            self.current_floor_definition.generator_type == "bsp"
+            and room_id is not None
+        ):
+            self.reveal_minimap_room(visible_tiles, room_id)
+
+        self.visible_minimap_tiles = visible_tiles
+        self.discovered_minimap_tiles.update(visible_tiles)
+
+    def is_minimap_point_discovered(self, world_point):
+        tile_x, tile_y = self.level.world_point_to_tile(*world_point)
+        return (tile_x, tile_y) in self.discovered_minimap_tiles
 
     def build_floor(self, floor_number):
         floor_definition = self.get_floor_definition(floor_number)
@@ -116,12 +173,16 @@ class GameWorld(State):
                 [],
             ).append(enemy_spawn)
         self.pending_enemy_spawn_count = len(floor_build.enemy_spawns)
+        self.total_floor_hostiles = self.pending_enemy_spawn_count
         self.alive_enemy_counts_by_room = {}
         self.locked_room_id = None
         self.pending_lock_room_id = None
         self.active_room_doors = []
         self.pending_room_doors = []
         self.cleared_room_ids = set()
+        self.discovered_minimap_tiles = set()
+        self.visible_minimap_tiles = set()
+        self.discovered_room_ids = set()
         self.boss = None
         self.boss_room_id = floor_build.boss_room_id
         self.pending_boss_spawn = floor_build.boss_spawn
@@ -134,6 +195,12 @@ class GameWorld(State):
 
         self.floor_exit = floor_build.floor_exit
         self.floor_exit_room_id = floor_build.floor_exit_room_id
+        if floor_build.boss_spawn is not None:
+            self.total_floor_hostiles += 1
+        starting_room_id = self.encounter_manager.get_room_id_for_point(
+            self.player.rect.center,
+        )
+        self.reveal_minimap_area(starting_room_id)
 
         if self.current_floor_has_shop and floor_build.shop_spawn is not None:
             self.shop_keeper = ShopKeeper(
@@ -261,6 +328,29 @@ class GameWorld(State):
     def remove_enemy(self, enemy):
         self.combat_system.remove_enemy(enemy)
 
+    def get_remaining_hostiles_for_floor(self):
+        living_enemies = sum(
+            1
+            for enemy in self.enemies
+            if not enemy.is_dead()
+        )
+        pending_boss_count = 1 if self.pending_boss_spawn is not None else 0
+        return self.pending_enemy_spawn_count + pending_boss_count + living_enemies
+
+    def get_total_hostiles_for_floor(self):
+        return self.total_floor_hostiles
+
+    def get_defeated_hostiles_count(self):
+        total_hostiles = self.get_total_hostiles_for_floor()
+        return max(0, total_hostiles - self.get_remaining_hostiles_for_floor())
+
+    def get_floor_progress_ratio(self):
+        total_hostiles = self.get_total_hostiles_for_floor()
+        if total_hostiles <= 0:
+            return 1.0
+
+        return min(1.0, self.get_defeated_hostiles_count() / total_hostiles)
+
     def update(self, delta_time, actions):
         if self.complete_boss_victory():
             return
@@ -291,6 +381,7 @@ class GameWorld(State):
             spawned_any = self.encounter_manager.spawn_room_enemies(player_room_id)
             if spawned_any:
                 self.encounter_manager.queue_room_lock(player_room_id)
+        self.reveal_minimap_area(player_room_id)
 
         self.encounter_manager.update_shop_keeper(delta_time)
         if self.encounter_manager.update_shop_trigger():
@@ -348,7 +439,7 @@ class GameWorld(State):
         self.sync_player_ui()
 
         if self.player_ui is not None:
-            self.player_ui.render(display)
+            self.player_ui.render(display, self)
 
     def render_boss_ui(self, display):
         if self.boss is None or not self.boss.is_combat_ready():

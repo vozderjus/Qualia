@@ -54,6 +54,26 @@ class BSPGeneratorValidationTests(unittest.TestCase):
             )
         )
 
+    def test_choose_shop_uses_start_room_on_boss_floor(self):
+        boss_generator = BSPGenerator(
+            map_width=20,
+            map_height=20,
+            has_shop=True,
+            is_boss_floor=True,
+        )
+        rooms = [
+            (1, 1, 10, 10),
+            (12, 1, 6, 6),
+        ]
+
+        shop_room_id, shop_spawn = boss_generator.choose_shop(rooms)
+
+        self.assertEqual(shop_room_id, 0)
+        self.assertNotEqual(
+            shop_spawn,
+            boss_generator.room_to_world_center(rooms[0]),
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -227,6 +227,12 @@ class BSPGenerator:
         rx, ry, rw, rh = room
         return (rx + rw // 2, ry + rh // 2)
 
+    def tile_to_world_center(self, tile_x, tile_y):
+        return (
+            tile_x * TILE_SIZE + TILE_SIZE // 2,
+            tile_y * TILE_SIZE + TILE_SIZE // 2,
+        )
+
     def world_to_tile(self, world_position):
         world_x, world_y = world_position
         return (world_x // TILE_SIZE, world_y // TILE_SIZE)
@@ -390,6 +396,12 @@ class BSPGenerator:
         return largest_room_id, self.room_to_world_center(largest_room)
 
     def choose_shop(self, rooms, exit_room_id=None):
+        if not rooms:
+            return None, None
+
+        if self.is_boss_floor:
+            return 0, self.get_shop_position_in_room(rooms[0])
+
         if len(rooms) <= 1:
             return None, None
 
@@ -413,7 +425,13 @@ class BSPGenerator:
             candidate_rooms,
             key=lambda item: item[1][2] * item[1][3],
         )
-        return shop_room_id, self.room_to_world_center(shop_room)
+        return shop_room_id, self.get_shop_position_in_room(shop_room)
+
+    def get_shop_position_in_room(self, room):
+        rx, ry, rw, rh = room
+        shop_tile_x = max(rx + 1, rx + rw - 2)
+        shop_tile_y = max(ry + 1, ry + rh - 2)
+        return self.tile_to_world_center(shop_tile_x, shop_tile_y)
 
     def choose_enemy_spawns(
         self,
