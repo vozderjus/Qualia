@@ -51,6 +51,20 @@ class RunStateTests(unittest.TestCase):
         self.assertEqual(run_state.currency, 15)
         self.assertEqual(run_state.player_damage_bonus, 4)
         self.assertIn("Осколки +4", run_state.upgrades)
+        self.assertEqual(run_state.shop_purchase_count, 1)
+
+    def test_shop_price_multiplier_grows_with_floor_and_shop_progress(self):
+        run_state = RunState.new_run(total_floors=5)
+        base_multiplier = run_state.get_shop_price_multiplier()
+
+        run_state.current_floor = 3
+        run_state.register_shop_purchase()
+        run_state.register_shop_reroll()
+
+        self.assertGreater(
+            run_state.get_shop_price_multiplier(),
+            base_multiplier,
+        )
 
 
 if __name__ == "__main__":

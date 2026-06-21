@@ -16,6 +16,8 @@ KEY_ACTIONS = {
     pygame.K_d: "right",
     pygame.K_w: "up",
     pygame.K_s: "down",
+    pygame.K_LSHIFT: "dodge",
+    pygame.K_RSHIFT: "dodge",
     pygame.K_SPACE: "interact",
     pygame.K_p: "pause",
     pygame.K_e: "inventory",
@@ -37,6 +39,7 @@ class Game():
             "right": False,
             "up": False,
             "down": False,
+            "dodge": False,
             "interact": False,
             "pause": False,
             "inventory": False,
@@ -144,11 +147,17 @@ class Game():
     def play_random_player_shot_sound(self):
         self.audio.play_random_player_shot_sound()
 
+    def play_enemy_shot_sound(self, sound_key):
+        self.audio.play_enemy_shot_sound(sound_key)
+
     def play_enemy_hit_sound(self):
         self.audio.play_enemy_hit_sound()
 
     def play_player_hit_sound(self):
         self.audio.play_player_hit_sound()
+
+    def play_pickup_sound(self):
+        self.audio.play_pickup_sound()
 
     # основной стэк где будут подгружаться все состояния
     def load_states(self):

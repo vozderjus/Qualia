@@ -23,3 +23,4 @@ class BlueEyeEnemy(Enemy):
         self.preferred_min_range = 150
         self.preferred_max_range = 300
         self.phase = 'idle'
+        self.shot_sound_key = "blue_eye_shot"

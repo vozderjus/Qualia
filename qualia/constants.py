@@ -14,6 +14,9 @@ PLAYER_HITBOX_HEIGHT = 38
 PLAYER_RENDER_OFFSET_Y = 4
 PLAYER_SPEED = 200
 PLAYER_MAX_HP = 120
+PLAYER_DODGE_SPEED = 560
+PLAYER_DODGE_DURATION = 0.16
+PLAYER_DODGE_COOLDOWN = 0.7
 HEAT_DROP_RANGE = (8, 12)
 HEAT_PICKUP_SIZE = 18
 
@@ -64,10 +67,12 @@ PLAYER_BULLET_SIZE = 10
 PLAYER_BULLET_VELOCITY = 400
 PLAYER_FIRE_COOLDOWN = 0.15
 PLAYER_BULLET_DAMAGE_RANGE = (22, 34)
+PLAYER_BULLET_COLOR = (255, 255, 0)
 
 # общий враг
 ENEMY_BULLET_VELOCITY = 400
 ENEMY_BULLET_DAMAGE_RANGE = (8, 12)
+ENEMY_BULLET_COLOR = (200, 24, 40)
 
 # снайпер
 SNIPER_BULLET_VELOCITY = 600
@@ -98,5 +103,5 @@ SETTINGS_CREDITS_LINES = (
     "Боевая система и поведение врагов: Vozderjus",
     "Генерация уровней: Vozderjus",
     "Музыка: Vozderjus",
-    "Ассеты и визуальное наполнение: vozderjus",
+    "Ассеты и визуальное наполнение: Vozderjus",
 )

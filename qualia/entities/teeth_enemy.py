@@ -23,3 +23,4 @@ class ShotgunEnemy(Enemy):
         self.preferred_min_range = 160
         self.preferred_max_range = 300
         self.phase = 'idle'
+        self.shot_sound_key = "shotgun_enemy_shot"

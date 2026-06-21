@@ -23,3 +23,4 @@ class HeartEnemy(Enemy):
         self.preferred_min_range = 0
         self.preferred_max_range = 300
         self.phase = 'idle'
+        self.shot_sound_key = "heart_enemy_shot"

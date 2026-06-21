@@ -1,3 +1,4 @@
+import math
 import random
 from dataclasses import dataclass
 
@@ -13,9 +14,13 @@ class ShopOffer:
     value: int | float
 
 
-def roll_max_hp_offer():
+def scale_shop_cost(base_cost, price_multiplier):
+    return max(1, int(math.ceil(base_cost * price_multiplier)))
+
+
+def roll_max_hp_offer(price_multiplier=1.0):
     value = random.randint(18, 28)
-    cost = 14 + value // 2
+    cost = scale_shop_cost(14 + value // 2, price_multiplier)
     return ShopOffer(
         effect_type="max_hp",
         name="Закалка тела",
@@ -25,9 +30,9 @@ def roll_max_hp_offer():
     )
 
 
-def roll_damage_offer():
+def roll_damage_offer(price_multiplier=1.0):
     value = random.randint(4, 7)
-    cost = 16 + value * 2
+    cost = scale_shop_cost(16 + value * 2, price_multiplier)
     return ShopOffer(
         effect_type="bullet_damage",
         name="Жаркий порох",
@@ -37,9 +42,9 @@ def roll_damage_offer():
     )
 
 
-def roll_fire_rate_offer():
+def roll_fire_rate_offer(price_multiplier=1.0):
     milliseconds = random.choice((12, 16, 20, 24))
-    cost = 18 + milliseconds // 2
+    cost = scale_shop_cost(18 + milliseconds // 2, price_multiplier)
     return ShopOffer(
         effect_type="fire_rate",
         name="Легкий спуск",
@@ -49,20 +54,20 @@ def roll_fire_rate_offer():
     )
 
 
-def roll_shop_offer(effect_type):
+def roll_shop_offer(effect_type, price_multiplier=1.0):
     if effect_type == "max_hp":
-        return roll_max_hp_offer()
+        return roll_max_hp_offer(price_multiplier)
     if effect_type == "bullet_damage":
-        return roll_damage_offer()
+        return roll_damage_offer(price_multiplier)
     if effect_type == "fire_rate":
-        return roll_fire_rate_offer()
+        return roll_fire_rate_offer(price_multiplier)
 
     raise ValueError(f"Unknown shop effect type: {effect_type}")
 
 
-def roll_shop_offers():
+def roll_shop_offers(price_multiplier=1.0):
     return [
-        roll_max_hp_offer(),
-        roll_damage_offer(),
-        roll_fire_rate_offer(),
+        roll_max_hp_offer(price_multiplier),
+        roll_damage_offer(price_multiplier),
+        roll_fire_rate_offer(price_multiplier),
     ]

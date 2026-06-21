@@ -61,6 +61,7 @@ class Enemy():
         self.spawn_timer = self.spawn_duration
         self.detection_telegraph_duration = 0.5
         self.detection_telegraph_timer = 0.0
+        self.shot_sound_key = None
 
     # сбор контекста (позиция игрока, расстояние до игрока, линия взгляда, готовность к выстрелу)
     def build_context(self):

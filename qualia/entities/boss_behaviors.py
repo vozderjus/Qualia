@@ -133,11 +133,13 @@ class BossSpreadAttack:
         speed,
         damage_range,
         require_line_of_sight=True,
+        sound_key=None,
     ):
         self.spread_angles = spread_angles
         self.speed = speed
         self.damage_range = damage_range
         self.require_line_of_sight = require_line_of_sight
+        self.sound_key = sound_key
 
     def get_attack_data(self, enemy, context):
         if not _can_attack(context, self.require_line_of_sight):
@@ -156,6 +158,7 @@ class BossSpreadAttack:
             directions=tuple(directions),
             speed=self.speed,
             damage_range=self.damage_range,
+            sound_key=self.sound_key,
         )
 
 
@@ -167,6 +170,7 @@ class BossWaveFanAttack:
         speed,
         damage_range,
         require_line_of_sight=True,
+        sound_key=None,
     ):
         self.spread_angles = spread_angles
         self.wave_offsets = wave_offsets
@@ -174,6 +178,7 @@ class BossWaveFanAttack:
         self.damage_range = damage_range
         self.require_line_of_sight = require_line_of_sight
         self.wave_index = 0
+        self.sound_key = sound_key
 
     def get_attack_data(self, enemy, context):
         if not _can_attack(context, self.require_line_of_sight):
@@ -194,6 +199,7 @@ class BossWaveFanAttack:
             directions=tuple(directions),
             speed=self.speed,
             damage_range=self.damage_range,
+            sound_key=self.sound_key,
         )
 
 
@@ -205,6 +211,7 @@ class BossPerimeterWaveAttack:
         damage_range,
         wave_offsets,
         require_line_of_sight=True,
+        sound_key=None,
     ):
         self.projectile_count = projectile_count
         self.speed = speed
@@ -212,6 +219,7 @@ class BossPerimeterWaveAttack:
         self.wave_offsets = wave_offsets
         self.require_line_of_sight = require_line_of_sight
         self.wave_index = 0
+        self.sound_key = sound_key
 
     def get_attack_data(self, enemy, context):
         if not _can_attack(context, self.require_line_of_sight):
@@ -234,6 +242,7 @@ class BossPerimeterWaveAttack:
             directions=tuple(directions),
             speed=self.speed,
             damage_range=self.damage_range,
+            sound_key=self.sound_key,
         )
 
 
@@ -245,12 +254,14 @@ class BossRicochetBurstAttack:
         damage_range,
         bounce_range,
         speed_loss_per_bounce,
+        sound_key=None,
     ):
         self.spread_angles = spread_angles
         self.speed = speed
         self.damage_range = damage_range
         self.bounce_range = bounce_range
         self.speed_loss_per_bounce = speed_loss_per_bounce
+        self.sound_key = sound_key
 
     def get_attack_data(self, enemy, context):
         if not _can_attack(context):
@@ -269,16 +280,18 @@ class BossRicochetBurstAttack:
             directions=tuple(directions),
             speed=self.speed,
             damage_range=self.damage_range,
+            sound_key=self.sound_key,
             bounce_range=self.bounce_range,
             speed_loss_per_bounce=self.speed_loss_per_bounce,
         )
 
 
 class BossNovaAttack:
-    def __init__(self, projectile_count, speed, damage_range):
+    def __init__(self, projectile_count, speed, damage_range, sound_key=None):
         self.projectile_count = projectile_count
         self.speed = speed
         self.damage_range = damage_range
+        self.sound_key = sound_key
 
     def get_attack_data(self, enemy, context):
         if not _can_attack(context, require_line_of_sight=False):
@@ -297,6 +310,7 @@ class BossNovaAttack:
             directions=tuple(directions),
             speed=self.speed,
             damage_range=self.damage_range,
+            sound_key=self.sound_key,
         )
 
 
@@ -317,6 +331,7 @@ def build_boss_phase_configs():
                     speed=112,
                     damage_range=(6, 8),
                     wave_offsets=(-42, -30, -18, -9, 0, 9, 18, 30, 42, 30, 18, 9, 0, -9, -18, -30),
+                    sound_key="heart_enemy_shot",
                 ),
             ),
             color=(110, 180, 255),
@@ -337,11 +352,13 @@ def build_boss_phase_configs():
                     damage_range=(10, 14),
                     bounce_range=(1, 2),
                     speed_loss_per_bounce=60,
+                    sound_key="blue_eye_shot",
                 ),
                 BossSpreadAttack(
                     spread_angles=(-32, -16, 0, 16, 32),
                     speed=300,
                     damage_range=(11, 14),
+                    sound_key="shotgun_enemy_shot",
                 ),
             ),
             color=(255, 170, 92),
@@ -360,6 +377,7 @@ def build_boss_phase_configs():
                     projectile_count=12,
                     speed=300,
                     damage_range=(8, 11),
+                    sound_key="heart_enemy_shot",
                 ),
                 BossRicochetBurstAttack(
                     spread_angles=(-24, -8, 8, 24),
@@ -367,11 +385,13 @@ def build_boss_phase_configs():
                     damage_range=(11, 15),
                     bounce_range=(2, 3),
                     speed_loss_per_bounce=75,
+                    sound_key="blue_eye_shot",
                 ),
                 BossSpreadAttack(
                     spread_angles=(-40, -20, 0, 20, 40),
                     speed=380,
                     damage_range=(11, 14),
+                    sound_key="shotgun_enemy_shot",
                 ),
             ),
             color=(255, 96, 120),

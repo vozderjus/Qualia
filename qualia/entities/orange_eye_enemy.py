@@ -23,3 +23,4 @@ class OrangeEye(Enemy):
         self.preferred_min_range = 140
         self.preferred_max_range = 260
         self.phase = 'idle'
+        self.shot_sound_key = "orange_eye_shot"

@@ -1,5 +1,5 @@
 import pygame
-from constants import SETTINGS_CREDITS_LINES, SETTINGS_LORE_PARAGRAPHS
+from settings_content import SETTINGS_CREDITS_LINES, SETTINGS_LORE_PARAGRAPHS
 from states.state import State
 from ui_helpers import (ButtonStyle, PanelStyle, draw_button, draw_panel, draw_text,
                         get_scaled_mouse_pos, load_font, make_overlay, wrap_text)
@@ -49,7 +49,7 @@ SLIDER_BORDER_COLOR = (220, 208, 186)
 SLIDER_ACTIVE_BORDER_COLOR = (240, 220, 184)
 SLIDER_THUMB_SIZE = (18, 26)
 SLIDER_HITBOX_INFLATE = (12, 12)
-LINE_STEP = 28
+LINE_STEP = 30
 
 
 class SettingsMenu(State):
@@ -67,6 +67,7 @@ class SettingsMenu(State):
         self.scroll_drag_offset = 0
         self.title_font = load_font(38)
         self.body_font = load_font(22)
+        self.section_font = load_font(24)
         self.small_font = load_font(18)
         self.overlay = make_overlay((self.game.GAME_W, self.game.GAME_H), 180)
         self.panel_rect = pygame.Rect(0, 0, *PANEL_SIZE)
@@ -238,7 +239,7 @@ class SettingsMenu(State):
                 body_lines.append("")
                 continue
 
-            body_lines.extend(wrap_text(line, self.body_font, max_width))
+            body_lines.extend(wrap_text(line, self.section_font, max_width))
             if self.current_section == "lore":
                 body_lines.append("")
 
@@ -401,7 +402,7 @@ class SettingsMenu(State):
             (255, 229, 188),
             content_rect.left + 16,
             content_rect.top + 14,
-            self.body_font,
+            self.section_font,
         )
 
         text_surface = pygame.Surface(
@@ -412,7 +413,7 @@ class SettingsMenu(State):
         y = 0
         for line in body_lines:
             if line:
-                line_surface = self.body_font.render(line, True, (228, 228, 232))
+                line_surface = self.section_font.render(line, True, (228, 228, 232))
                 text_surface.blit(line_surface, (0, y))
             y += LINE_STEP
 

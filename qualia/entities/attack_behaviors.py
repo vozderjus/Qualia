@@ -21,6 +21,7 @@ class SingleShotAttack:
                 directions=(context.direction_to_target,),
                 speed=ENEMY_BULLET_VELOCITY,
                 damage_range=ENEMY_BULLET_DAMAGE_RANGE,
+                sound_key=enemy.shot_sound_key,
             )
 
         return None
@@ -48,6 +49,7 @@ class ConeShotAttack:
                 directions=directions,
                 speed=ENEMY_BULLET_VELOCITY,
                 damage_range=ENEMY_BULLET_DAMAGE_RANGE,
+                sound_key=enemy.shot_sound_key,
             )
 
         return None
@@ -68,6 +70,7 @@ class SniperAttack:
                 directions=(context.direction_to_target,),
                 speed=SNIPER_BULLET_VELOCITY,
                 damage_range=SNIPER_BULLET_DAMAGE_RANGE,
+                sound_key=enemy.shot_sound_key,
             )
 
         return None
@@ -88,6 +91,7 @@ class RicochetShotAttack:
                 directions=(context.direction_to_target,),
                 speed=BLUE_BULLET_VELOCITY,
                 damage_range=BLUE_BULLET_DAMAGE_RANGE,
+                sound_key=enemy.shot_sound_key,
                 bounce_range=BLUE_BULLET_BOUNCE_RANGE,
                 speed_loss_per_bounce=BLUE_BULLET_SPEED_LOSS_PER_BOUNCE,
             )
@@ -117,6 +121,7 @@ class HeartAttack:
                 directions=directions,
                 speed=HEART_BULLET_VELOCITY,
                 damage_range=HEART_BULLET_DAMAGE_RANGE,
+                sound_key=enemy.shot_sound_key,
             )
 
         return None

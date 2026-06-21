@@ -23,3 +23,4 @@ class SniperEnemy(Enemy):
         self.preferred_min_range = 260
         self.preferred_max_range = 420
         self.phase = 'idle'
+        self.shot_sound_key = "sniper_enemy_shot"

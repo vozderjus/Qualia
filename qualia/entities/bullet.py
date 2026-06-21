@@ -1,5 +1,5 @@
 import pygame
-from constants import PLAYER_BULLET_SIZE
+from constants import PLAYER_BULLET_COLOR, PLAYER_BULLET_SIZE
 
 
 class Bullet():
@@ -8,13 +8,14 @@ class Bullet():
         pos,
         velocity,
         damage,
+        color=PLAYER_BULLET_COLOR,
         remaining_bounces=0,
         speed_loss_per_bounce=0,
     ):
         self.image = pygame.Surface((PLAYER_BULLET_SIZE, PLAYER_BULLET_SIZE), pygame.SRCALPHA)
         pygame.draw.circle(
             self.image,
-            (255, 255, 0), 
+            color,
             (PLAYER_BULLET_SIZE / 2, PLAYER_BULLET_SIZE / 2), 
             PLAYER_BULLET_SIZE / 2
         )

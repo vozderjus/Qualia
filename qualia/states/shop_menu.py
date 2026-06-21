@@ -1,5 +1,4 @@
 import pygame
-from shop_content import SHOP_REROLL_COST
 from states.state import State
 from ui_helpers import (ButtonStyle, PanelStyle, draw_button, draw_panel, draw_text,
                         get_scaled_mouse_pos, load_font, make_overlay, wrap_text)
@@ -198,6 +197,7 @@ class ShopMenu(State):
     def render(self, display):
         self.prev_state.render(display)
         mouse_pos = get_scaled_mouse_pos(self.game)
+        reroll_cost = self.world.get_shop_reroll_cost()
 
         display.blit(self.overlay, (0, 0))
         draw_panel(display, self.panel_rect, PANEL_STYLE)
@@ -221,7 +221,7 @@ class ShopMenu(State):
         )
         draw_text(
             display,
-            f"Обновить ассортимент: {SHOP_REROLL_COST} жара",
+            f"Обновить ассортимент: {reroll_cost} жара",
             (220, 220, 230),
             self.panel_rect.right - REROLL_INFO_CENTER_OFFSET,
             self.panel_rect.top + 92,
@@ -239,7 +239,7 @@ class ShopMenu(State):
             mouse_pos,
             self.button_font,
             ACTION_BUTTON_STYLE,
-            enabled=self.world.run_state.currency >= SHOP_REROLL_COST,
+            enabled=self.world.run_state.currency >= reroll_cost,
         )
         draw_button(
             display,

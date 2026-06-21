@@ -1,7 +1,8 @@
 import random
 
 import pygame
-from constants import PLAYER_BULLET_VELOCITY
+from constants import (ENEMY_BULLET_COLOR, PLAYER_BULLET_COLOR,
+                       PLAYER_BULLET_VELOCITY)
 from entities.bullet import Bullet
 from entities.floating_damage_text import FloatingDamageText
 from entities.heat_pickup import HeatPickup
@@ -56,6 +57,7 @@ class CombatSystem:
                 continue
 
             self.world.run_state.add_currency(heat_pickup.amount)
+            self.world.game.play_pickup_sound()
             self.spawn_damage_text(
                 f"+{heat_pickup.amount} жар",
                 heat_pickup.rect.midtop,
@@ -86,6 +88,7 @@ class CombatSystem:
             attack_command = enemy.update(delta_time)
 
             if attack_command is not None:
+                self.world.game.play_enemy_shot_sound(attack_command.sound_key)
                 for direction in attack_command.directions:
                     self.spawn_enemy_bullet(
                         attack_command.origin,
@@ -162,7 +165,14 @@ class CombatSystem:
 
         velocity = direction.normalize() * PLAYER_BULLET_VELOCITY
         damage = random.randint(*self.world.run_state.get_player_bullet_damage_range())
-        self.world.player_bullets.append(Bullet(spawn_point, velocity, damage))
+        self.world.player_bullets.append(
+            Bullet(
+                spawn_point,
+                velocity,
+                damage,
+                color=PLAYER_BULLET_COLOR,
+            )
+        )
         self.world.game.play_random_player_shot_sound()
 
     def spawn_enemy_bullet(
@@ -185,6 +195,7 @@ class CombatSystem:
                 origin,
                 velocity,
                 damage,
+                color=ENEMY_BULLET_COLOR,
                 remaining_bounces=remaining_bounces,
                 speed_loss_per_bounce=speed_loss_per_bounce,
             )
@@ -218,13 +229,14 @@ class CombatSystem:
     def handle_enemy_to_player_collisions(self):
         for enemy_bullet in self.world.enemies_bullets[:]:
             if enemy_bullet.rect.colliderect(self.world.player.rect):
-                self.world.game.play_player_hit_sound()
-                self.spawn_damage_text(
-                    enemy_bullet.damage,
-                    self.world.player.rect.midtop,
-                    (255, 120, 120),
-                )
-                self.world.player.take_damage(enemy_bullet.damage)
+                took_damage = self.world.player.take_damage(enemy_bullet.damage)
+                if took_damage:
+                    self.world.game.play_player_hit_sound()
+                    self.spawn_damage_text(
+                        enemy_bullet.damage,
+                        self.world.player.rect.midtop,
+                        (255, 120, 120),
+                    )
 
                 if enemy_bullet in self.world.enemies_bullets:
                     self.world.enemies_bullets.remove(enemy_bullet)

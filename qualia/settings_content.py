@@ -6,12 +6,12 @@ SETTINGS_LORE_PARAGRAPHS = (
 
 
 SETTINGS_CREDITS_LINES = (
-    "Made by vozderjus",
+    "Made by Vozderjus",
     "",
-    "Основная идея и сюжет: vozderjus",
-    "Логика игры и программирование: vozderjus",
-    "Боевая система и поведение врагов: vozderjus",
-    "Генерация уровней: vozderjus",
-    "Музыка: vozderjus",
-    "Ассеты и визуальное наполнение: vozderjus",
+    "Основная идея и сюжет: Vozderjus",
+    "Логика игры и программирование: Vozderjus",
+    "Боевая система и поведение врагов: Vozderjus",
+    "Генерация уровней: Vozderjus",
+    "Музыка: Vozderjus",
+    "Ассеты и визуальное наполнение: Vozderjus",
 )

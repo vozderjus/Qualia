@@ -15,6 +15,8 @@ class RunState:
     keys: int = 0
     upgrades: list[str] = field(default_factory=list)
     cleared_floors: list[int] = field(default_factory=list)
+    shop_purchase_count: int = 0
+    shop_reroll_count: int = 0
 
     @classmethod
     def new_run(cls, total_floors, starting_hp=PLAYER_MAX_HP):
@@ -61,6 +63,18 @@ class RunState:
     def heal_to_full(self):
         self.player_hp = self.max_player_hp
 
+    def get_shop_price_multiplier(self):
+        floor_bonus = max(0, self.current_floor - 1) * 0.18
+        purchase_bonus = self.shop_purchase_count * 0.12
+        reroll_bonus = self.shop_reroll_count * 0.05
+        return 1.0 + floor_bonus + purchase_bonus + reroll_bonus
+
+    def register_shop_purchase(self):
+        self.shop_purchase_count += 1
+
+    def register_shop_reroll(self):
+        self.shop_reroll_count += 1
+
     def purchase_shop_offer(self, offer):
         if not self.spend_currency(offer.cost):
             return False, "Недостаточно жара"
@@ -69,11 +83,13 @@ class RunState:
             self.max_player_hp += int(offer.value)
             self.player_hp = min(self.max_player_hp, self.player_hp + int(offer.value))
             self.upgrades.append(f"{offer.name} +{int(offer.value)}")
+            self.register_shop_purchase()
             return True, f"Макс. HP +{int(offer.value)}"
 
         if offer.effect_type == "bullet_damage":
             self.player_damage_bonus += int(offer.value)
             self.upgrades.append(f"{offer.name} +{int(offer.value)}")
+            self.register_shop_purchase()
             return True, f"Урон +{int(offer.value)}"
 
         if offer.effect_type == "fire_rate":
@@ -88,6 +104,7 @@ class RunState:
             self.player_fire_cooldown_bonus += applied_bonus
             applied_ms = int(round(applied_bonus * 1000))
             self.upgrades.append(f"{offer.name} -{applied_ms}мс")
+            self.register_shop_purchase()
             return True, f"Кулдаун -{applied_ms} мс"
 
         self.currency += offer.cost

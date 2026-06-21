@@ -313,15 +313,29 @@ class BSPGenerator:
         start_center_x = start_room[0] + start_room[2] // 2
         start_center_y = start_room[1] + start_room[3] // 2
 
-        farthest_room_id, farthest_room = max(
-            enumerate(rooms[1:], start=1),
-            key=lambda item: (
-                (item[1][0] + item[1][2] // 2 - start_center_x) ** 2
-                + (item[1][1] + item[1][3] // 2 - start_center_y) ** 2
-            ),
-        )
+        room_distances = [
+            (
+                room_id,
+                room,
+                (room[0] + room[2] // 2 - start_center_x) ** 2
+                + (room[1] + room[3] // 2 - start_center_y) ** 2,
+            )
+            for room_id, room in enumerate(rooms[1:], start=1)
+        ]
+        max_distance = max(distance for _, _, distance in room_distances)
+        min_candidate_distance = max_distance * 0.65
+        candidate_rooms = [
+            room_data
+            for room_data in room_distances
+            if room_data[2] >= min_candidate_distance
+        ]
 
-        return farthest_room_id, self.room_to_world_center(farthest_room)
+        chosen_room_id, chosen_room, _ = random.choices(
+            candidate_rooms,
+            weights=[max(1, distance) for _, _, distance in candidate_rooms],
+            k=1,
+        )[0]
+        return chosen_room_id, self.room_to_world_center(chosen_room)
 
     def is_valid_boss_room(self, room):
         _, _, room_width, room_height = room

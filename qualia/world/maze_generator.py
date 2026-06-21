@@ -183,7 +183,14 @@ class MazeGenerator:
         if not safe_tiles:
             return None
 
-        return max(safe_tiles, key=distances.get)
+        max_distance = max(distances[tile] for tile in safe_tiles)
+        min_candidate_distance = max(1, int(max_distance * 0.85))
+        candidate_tiles = [
+            tile
+            for tile in safe_tiles
+            if distances[tile] >= min_candidate_distance
+        ]
+        return random.choice(candidate_tiles)
 
     def floor_run_length(self, grid, tile_x, tile_y, step_x, step_y):
         run_length = 1

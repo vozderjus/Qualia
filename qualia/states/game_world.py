@@ -1,3 +1,5 @@
+import random
+
 import pygame
 from constants import CAMERA_ZOOM
 from entities.camera import Camera
@@ -59,6 +61,7 @@ class GameWorld(State):
         self.shop_keeper = None
         self.shop_trigger_armed = True
         self.shop_offers = []
+        self.current_floor_has_shop = False
         self.debug_hud = DebugHUD(self.game, self)
         self.floor_builder = FloorBuilder()
         self.encounter_manager = EncounterManager(self)
@@ -75,16 +78,24 @@ class GameWorld(State):
         self.camera.y = self.player.rect.centery - self.camera.visible_height() / 2
         self.camera.clamp(self.level.pixel_width, self.level.pixel_height)
 
+    def should_spawn_shop(self, floor_definition):
+        chance = max(0.0, min(1.0, floor_definition.shop_spawn_chance))
+        return random.random() < chance
+
     def build_floor(self, floor_number):
         floor_definition = self.get_floor_definition(floor_number)
         self.current_floor_definition = floor_definition
+        self.current_floor_has_shop = self.should_spawn_shop(floor_definition)
 
         if floor_definition.music_track is not None:
             self.game.play_music(floor_definition.music_track)
         else:
             self.game.stop_music()
 
-        floor_build = self.floor_builder.build(floor_definition)
+        floor_build = self.floor_builder.build(
+            floor_definition,
+            has_shop=self.current_floor_has_shop,
+        )
         self.level = floor_build.level
         self.level_renderer = floor_build.level_renderer
         self.player = Player(self.game, self.level, floor_build.player_spawn)
@@ -124,13 +135,13 @@ class GameWorld(State):
         self.floor_exit = floor_build.floor_exit
         self.floor_exit_room_id = floor_build.floor_exit_room_id
 
-        if floor_definition.has_shop and floor_build.shop_spawn is not None:
+        if self.current_floor_has_shop and floor_build.shop_spawn is not None:
             self.shop_keeper = ShopKeeper(
                 self.game,
                 floor_build.shop_spawn,
                 floor_build.shop_room_id,
             )
-            self.shop_offers = roll_shop_offers()
+            self.shop_offers = self.roll_shop_offers_for_current_run()
 
     def advance_to_next_floor(self):
         self.run_state.sync_from_player(self.player)
@@ -171,18 +182,42 @@ class GameWorld(State):
 
         self.run_state.apply_to_player(self.player)
         self.sync_player_ui()
-        self.shop_offers[offer_index] = roll_shop_offer(offer.effect_type)
+        self.shop_offers[offer_index] = self.roll_shop_offer_for_current_run(
+            offer.effect_type
+        )
         return True, f"Куплено: {offer.name}"
+
+    def get_shop_price_multiplier(self):
+        return self.run_state.get_shop_price_multiplier()
+
+    def get_shop_reroll_cost(self):
+        return max(
+            SHOP_REROLL_COST,
+            int(round(SHOP_REROLL_COST * self.get_shop_price_multiplier())),
+        )
+
+    def roll_shop_offer_for_current_run(self, effect_type):
+        return roll_shop_offer(
+            effect_type,
+            price_multiplier=self.get_shop_price_multiplier(),
+        )
+
+    def roll_shop_offers_for_current_run(self):
+        return roll_shop_offers(
+            price_multiplier=self.get_shop_price_multiplier(),
+        )
 
     def try_reroll_shop_offers(self):
         if not self.shop_offers:
             return False, "Лавка пока пуста"
 
-        if not self.run_state.spend_currency(SHOP_REROLL_COST):
+        reroll_cost = self.get_shop_reroll_cost()
+        if not self.run_state.spend_currency(reroll_cost):
             self.sync_player_ui()
             return False, "Недостаточно жара для обновления"
 
-        self.shop_offers = roll_shop_offers()
+        self.run_state.register_shop_reroll()
+        self.shop_offers = self.roll_shop_offers_for_current_run()
         self.sync_player_ui()
         return True, "Ассортимент обновлен"
 
@@ -200,6 +235,7 @@ class GameWorld(State):
             self.total_floors,
             self.current_floor_definition.name,
             self.run_state.currency,
+            self.player.dodge_cooldown_ratio(),
         )
 
     def complete_boss_victory(self):
@@ -273,7 +309,11 @@ class GameWorld(State):
         if self.encounter_manager.update_floor_exit(delta_time, actions):
             return
 
-        if actions['fire'] and self.time_since_shot >= self.run_state.get_player_fire_cooldown():
+        if (
+            actions['fire']
+            and self.player.can_fire()
+            and self.time_since_shot >= self.run_state.get_player_fire_cooldown()
+        ):
             self.combat_system.spawn_player_bullet()
             self.time_since_shot = 0
 

@@ -27,8 +27,10 @@ class AudioManager:
         self.current_music_key = None
         self.current_music_volume_multiplier = 1.0
         self.player_shot_sounds = []
+        self.enemy_shot_sounds = {}
         self.enemy_hit_sound = None
         self.player_hit_sound = None
+        self.pickup_sound = None
 
     def load(self):
         if not self.init_audio():
@@ -45,6 +47,14 @@ class AudioManager:
         ]
         self.enemy_hit_sound = self.load_sound("u_68csiaifb5-bulletimpact4-442720.mp3")
         self.player_hit_sound = self.load_sound("main character impact.mp3")
+        self.pickup_sound = self.load_sound("pickup_sound.mp3")
+        self.enemy_shot_sounds = {
+            "orange_eye_shot": self.load_sound("orange_eye_shot.mp3"),
+            "shotgun_enemy_shot": self.load_sound("shotgun_enemy_shot.mp3"),
+            "sniper_enemy_shot": self.load_sound("sniper_enemy_shot.mp3"),
+            "heart_enemy_shot": self.load_sound("heart_enemy_shot.mp3"),
+            "blue_eye_shot": self.load_sound("blue_eye_shot.mp3"),
+        }
         self.apply_settings()
 
     def init_audio(self):
@@ -76,17 +86,26 @@ class AudioManager:
 
         sfx_base_volume = self.settings.sfx_volume
         player_shot_volume = sfx_base_volume * 0.35
+        enemy_shot_volume = sfx_base_volume * 0.32
         enemy_hit_volume = sfx_base_volume * 0.45
         player_hit_volume = sfx_base_volume * 0.55
+        pickup_volume = sfx_base_volume * 0.4
 
         for sound in self.player_shot_sounds:
             sound.set_volume(player_shot_volume)
+
+        for sound in self.enemy_shot_sounds.values():
+            if sound is not None:
+                sound.set_volume(enemy_shot_volume)
 
         if self.enemy_hit_sound is not None:
             self.enemy_hit_sound.set_volume(enemy_hit_volume)
 
         if self.player_hit_sound is not None:
             self.player_hit_sound.set_volume(player_hit_volume)
+
+        if self.pickup_sound is not None:
+            self.pickup_sound.set_volume(pickup_volume)
 
         try:
             pygame.mixer.music.set_volume(
@@ -152,8 +171,17 @@ class AudioManager:
 
         self.play_sound(random.choice(self.player_shot_sounds))
 
+    def play_enemy_shot_sound(self, sound_key):
+        if sound_key is None:
+            return
+
+        self.play_sound(self.enemy_shot_sounds.get(sound_key))
+
     def play_enemy_hit_sound(self):
         self.play_sound(self.enemy_hit_sound)
 
     def play_player_hit_sound(self):
         self.play_sound(self.player_hit_sound)
+
+    def play_pickup_sound(self):
+        self.play_sound(self.pickup_sound)
