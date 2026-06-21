@@ -1,3 +1,4 @@
+from collections import deque
 import random
 from dataclasses import dataclass
 
@@ -222,6 +223,76 @@ class BSPGenerator:
             center_y * TILE_SIZE + TILE_SIZE // 2,
         )
 
+    def room_to_tile_center(self, room):
+        rx, ry, rw, rh = room
+        return (rx + rw // 2, ry + rh // 2)
+
+    def world_to_tile(self, world_position):
+        world_x, world_y = world_position
+        return (world_x // TILE_SIZE, world_y // TILE_SIZE)
+
+    def is_walkable_tile(self, grid, tile_x, tile_y):
+        if tile_y < 0 or tile_y >= len(grid):
+            return False
+        if tile_x < 0 or tile_x >= len(grid[0]):
+            return False
+
+        return grid[tile_y][tile_x] == Tiles.FLOOR.value
+
+    def collect_reachable_tiles(self, grid, start_tile):
+        if not self.is_walkable_tile(grid, *start_tile):
+            return set()
+
+        reachable_tiles = {start_tile}
+        queue = deque([start_tile])
+
+        while queue:
+            tile_x, tile_y = queue.popleft()
+            for next_tile in (
+                (tile_x + 1, tile_y),
+                (tile_x - 1, tile_y),
+                (tile_x, tile_y + 1),
+                (tile_x, tile_y - 1),
+            ):
+                if next_tile in reachable_tiles:
+                    continue
+                if not self.is_walkable_tile(grid, *next_tile):
+                    continue
+
+                reachable_tiles.add(next_tile)
+                queue.append(next_tile)
+
+        return reachable_tiles
+
+    def validate_reachability(
+        self,
+        grid,
+        rooms,
+        player_spawn,
+        exit_spawn=None,
+        boss_spawn=None,
+        shop_spawn=None,
+    ):
+        if not rooms:
+            return False
+
+        reachable_tiles = self.collect_reachable_tiles(
+            grid,
+            self.world_to_tile(player_spawn),
+        )
+        if not reachable_tiles:
+            return False
+
+        required_tiles = [
+            self.room_to_tile_center(room)
+            for room in rooms
+        ]
+        for world_position in (exit_spawn, boss_spawn, shop_spawn):
+            if world_position is not None:
+                required_tiles.append(self.world_to_tile(world_position))
+
+        return all(tile in reachable_tiles for tile in required_tiles)
+
     def choose_player_spawn(self, rooms):
         if not rooms:
             return (
@@ -407,7 +478,7 @@ class BSPGenerator:
         return (spawn_x, spawn_y)
 
     def generate(self):
-        attempts = 24 if self.is_boss_floor else 1
+        attempts = 24 if self.is_boss_floor else 12
 
         for attempt_index in range(attempts):
             grid = [
@@ -443,6 +514,17 @@ class BSPGenerator:
                 if reserved_room_id is None:
                     reserved_room_id = boss_room_id
                 shop_room_id, shop_spawn = self.choose_shop(rooms, reserved_room_id)
+
+            if not self.validate_reachability(
+                grid,
+                rooms,
+                player_spawn,
+                exit_spawn=exit_spawn,
+                boss_spawn=boss_spawn,
+                shop_spawn=shop_spawn,
+            ):
+                continue
+
             enemy_spawns = self.choose_enemy_spawns(
                 rooms,
                 exit_room_id,
@@ -462,3 +544,5 @@ class BSPGenerator:
                 shop_spawn=shop_spawn,
                 shop_room_id=shop_room_id,
             )
+
+        raise RuntimeError("BSP generator could not build a fully connected level")

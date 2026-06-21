@@ -41,7 +41,7 @@ BLUE_EYE_COOLDOWN = 0.8
 
 # босс
 BOSS_SIZE = 128
-BOSS_HP = 780
+BOSS_HP = 1000
 
 # === все что связано с тайлингом ===
 TILE_SIZE = 32
