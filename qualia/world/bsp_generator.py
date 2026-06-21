@@ -1,5 +1,5 @@
-from collections import deque
 import random
+from collections import deque
 from dataclasses import dataclass
 
 from constants import MIN_AREA_SIZE, MIN_CORRIDOR_WIDTH, MIN_ROOM_SIZE, TILE_SIZE, Tiles

@@ -47,8 +47,8 @@ class Game():
             "fire": False,
             "debug_toggle": False,
         }
-        self.dt, self.prev_time = 0, 0 #framerate independance
-        self.state_stack = [] #game states management
+        self.dt, self.prev_time = 0, 0
+        self.state_stack = []
         self.run_state = None
         self.settings = GameSettings()
         self.clock = pygame.time.Clock()

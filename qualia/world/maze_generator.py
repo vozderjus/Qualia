@@ -1,9 +1,8 @@
-from collections import deque
 import random
+from collections import deque
 
 from constants import MIN_CORRIDOR_WIDTH, TILE_SIZE, Tiles
 from world.bsp_generator import EnemySpawn, GeneratedLevel
-
 
 CARDINAL_STEPS = ((1, 0), (-1, 0), (0, 1), (0, -1))
 

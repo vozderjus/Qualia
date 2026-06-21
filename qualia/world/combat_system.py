@@ -1,8 +1,7 @@
 import random
 
 import pygame
-from constants import (ENEMY_BULLET_COLOR, PLAYER_BULLET_COLOR,
-                       PLAYER_BULLET_VELOCITY)
+from constants import ENEMY_BULLET_COLOR, PLAYER_BULLET_COLOR, PLAYER_BULLET_VELOCITY
 from entities.bullet import Bullet
 from entities.floating_damage_text import FloatingDamageText
 from entities.heat_pickup import HeatPickup
