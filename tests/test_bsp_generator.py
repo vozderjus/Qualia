@@ -1,6 +1,7 @@
 import sys
 import unittest
 from pathlib import Path
+from collections import Counter
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "qualia"))
 
@@ -73,6 +74,40 @@ class BSPGeneratorValidationTests(unittest.TestCase):
             shop_spawn,
             boss_generator.room_to_world_center(rooms[0]),
         )
+
+    def test_sample_enemy_positions_stay_inside_room(self):
+        random_generator = BSPGenerator(map_width=20, map_height=20, enemy_count=4)
+        room = (4, 5, 8, 7)
+
+        positions = random_generator.sample_enemy_positions_in_room(room, 4)
+
+        self.assertEqual(len(positions), 4)
+        min_x, max_x, min_y, max_y = random_generator.room_spawn_tile_bounds(room)
+        valid_tiles = {
+            (tile_x, tile_y)
+            for tile_y in range(min_y, max_y + 1)
+            for tile_x in range(min_x, max_x + 1)
+        }
+
+        for position in positions:
+            self.assertIn(
+                random_generator.world_to_tile(position),
+                valid_tiles,
+            )
+
+    def test_choose_enemy_spawns_keeps_minimum_two_enemies_per_room(self):
+        spawn_generator = BSPGenerator(map_width=30, map_height=30, enemy_count=3)
+        rooms = [
+            (1, 1, 7, 7),
+            (10, 1, 7, 7),
+            (1, 10, 7, 7),
+        ]
+
+        enemy_spawns = spawn_generator.choose_enemy_spawns(rooms)
+
+        counts_by_room = Counter(enemy_spawn.room_id for enemy_spawn in enemy_spawns)
+        self.assertEqual(set(counts_by_room), {1, 2})
+        self.assertTrue(all(count >= 2 for count in counts_by_room.values()))
 
 
 if __name__ == "__main__":

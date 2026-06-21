@@ -464,50 +464,98 @@ class BSPGenerator:
         if not available_rooms:
             available_rooms = list(enumerate(rooms[1:], start=1))
 
-        selected_rooms = available_rooms
+        selected_rooms = list(available_rooms)
         enemy_count = max(self.enemy_count, len(selected_rooms) * 2)
+        room_enemy_counts = {
+            room_id: 0
+            for room_id, _ in selected_rooms
+        }
+
+        for enemy_index in range(enemy_count):
+            room_id, _ = selected_rooms[enemy_index % len(selected_rooms)]
+            room_enemy_counts[room_id] += 1
 
         enemy_spawns = []
-        for enemy_index in range(enemy_count):
-            room_id, room = selected_rooms[enemy_index % len(selected_rooms)]
-            room_slot_index = enemy_index // len(selected_rooms)
-            enemy_spawns.append(
-                EnemySpawn(
-                    room_id=room_id,
-                    position=self.get_enemy_position_in_room(room, room_slot_index),
-                )
+        for room_id, room in selected_rooms:
+            positions = self.sample_enemy_positions_in_room(
+                room,
+                room_enemy_counts[room_id],
             )
+            for position in positions:
+                enemy_spawns.append(
+                    EnemySpawn(
+                        room_id=room_id,
+                        position=position,
+                    )
+                )
 
         random.shuffle(enemy_spawns)
         return enemy_spawns
 
-    def get_enemy_position_in_room(self, room, slot_index):
-        center_x, center_y = self.room_to_world_center(room)
+    def room_spawn_tile_bounds(self, room, padding_tiles=2):
         rx, ry, rw, rh = room
+        min_x = rx + padding_tiles
+        max_x = rx + rw - padding_tiles - 1
+        min_y = ry + padding_tiles
+        max_y = ry + rh - padding_tiles - 1
 
-        min_x = rx * TILE_SIZE + TILE_SIZE
-        max_x = (rx + rw) * TILE_SIZE - TILE_SIZE
-        min_y = ry * TILE_SIZE + TILE_SIZE
-        max_y = (ry + rh) * TILE_SIZE - TILE_SIZE
+        if min_x > max_x:
+            min_x = rx + 1
+            max_x = rx + rw - 2
+        if min_y > max_y:
+            min_y = ry + 1
+            max_y = ry + rh - 2
 
-        offset_step = TILE_SIZE * 2
-        spawn_offsets = (
-            (0, 0),
-            (-offset_step, 0),
-            (offset_step, 0),
-            (0, -offset_step),
-            (0, offset_step),
-            (-offset_step, -offset_step),
-            (offset_step, -offset_step),
-            (-offset_step, offset_step),
-            (offset_step, offset_step),
-        )
+        if min_x > max_x:
+            min_x = rx
+            max_x = rx + rw - 1
+        if min_y > max_y:
+            min_y = ry
+            max_y = ry + rh - 1
 
-        offset_x, offset_y = spawn_offsets[slot_index % len(spawn_offsets)]
-        spawn_x = max(min_x, min(center_x + offset_x, max_x))
-        spawn_y = max(min_y, min(center_y + offset_y, max_y))
+        return min_x, max_x, min_y, max_y
 
-        return (spawn_x, spawn_y)
+    def sample_enemy_positions_in_room(self, room, count):
+        if count <= 0:
+            return []
+
+        min_x, max_x, min_y, max_y = self.room_spawn_tile_bounds(room)
+        candidate_tiles = [
+            (tile_x, tile_y)
+            for tile_y in range(min_y, max_y + 1)
+            for tile_x in range(min_x, max_x + 1)
+        ]
+        random.shuffle(candidate_tiles)
+
+        min_distance_sq = (TILE_SIZE * 2) ** 2
+        selected_positions = []
+
+        for tile_x, tile_y in candidate_tiles:
+            position = self.tile_to_world_center(tile_x, tile_y)
+            if all(
+                (position[0] - other[0]) ** 2 + (position[1] - other[1]) ** 2 >= min_distance_sq
+                for other in selected_positions
+            ):
+                selected_positions.append(position)
+                if len(selected_positions) == count:
+                    return selected_positions
+
+        for tile_x, tile_y in candidate_tiles:
+            position = self.tile_to_world_center(tile_x, tile_y)
+            if position in selected_positions:
+                continue
+
+            selected_positions.append(position)
+            if len(selected_positions) == count:
+                return selected_positions
+
+        if not selected_positions:
+            selected_positions.append(self.room_to_world_center(room))
+
+        while len(selected_positions) < count:
+            selected_positions.append(random.choice(selected_positions))
+
+        return selected_positions
 
     def generate(self):
         attempts = 24 if self.is_boss_floor else 12
