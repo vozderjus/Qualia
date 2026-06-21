@@ -102,7 +102,7 @@ class Game():
         self.draw_text(self.screen, f"{int(self.clock.get_fps())}", (255, 255, 255), self.GAME_W / 2, self.GAME_H - 50, 20)
         pygame.display.flip()
     
-    # вычисляем разницу между нынешним кадром и предыдущим кадром, чтобы 
+    # вычисляем разницу между нынешним кадром и предыдущим кадром
     def get_dt(self):
         now = time.time()
         self.dt = now - self.prev_time

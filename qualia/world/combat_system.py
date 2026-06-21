@@ -37,6 +37,7 @@ class CombatSystem:
             return
 
         self.world.enemies.remove(enemy)
+        self.world.encounter_manager.track_removed_enemy(enemy)
         if enemy is self.world.boss:
             self.world.boss = None
             self.world.pending_boss_spawn = None

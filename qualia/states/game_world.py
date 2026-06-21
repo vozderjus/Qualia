@@ -38,7 +38,9 @@ class GameWorld(State):
         self.time_since_shot = self.run_state.get_player_fire_cooldown()
 
         self.enemies = []
-        self.pending_enemy_spawns = []
+        self.pending_enemy_spawns_by_room = {}
+        self.pending_enemy_spawn_count = 0
+        self.alive_enemy_counts_by_room = {}
         self.floor_exit = None
         self.floor_exit_room_id = None
         self.locked_room_id = None
@@ -92,10 +94,18 @@ class GameWorld(State):
         self.current_room_id = None
         self.camera = Camera(self.game.GAME_W, self.game.GAME_H, CAMERA_ZOOM)
         self.center_camera_on_player()
+        self.encounter_manager.prepare_floor_layout()
 
         self.combat_system.reset()
         self.enemies = []
-        self.pending_enemy_spawns = list(floor_build.enemy_spawns)
+        self.pending_enemy_spawns_by_room = {}
+        for enemy_spawn in floor_build.enemy_spawns:
+            self.pending_enemy_spawns_by_room.setdefault(
+                enemy_spawn.room_id,
+                [],
+            ).append(enemy_spawn)
+        self.pending_enemy_spawn_count = len(floor_build.enemy_spawns)
+        self.alive_enemy_counts_by_room = {}
         self.locked_room_id = None
         self.pending_lock_room_id = None
         self.active_room_doors = []

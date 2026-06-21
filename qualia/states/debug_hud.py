@@ -234,7 +234,7 @@ class DebugHUD:
         )
         draw_text(
             display,
-            f"Жар: {self.world.run_state.currency}    Враги: {len(self.world.enemies)}    Ожидают: {len(self.world.pending_enemy_spawns)}",
+            f"Жар: {self.world.run_state.currency}    Враги: {len(self.world.enemies)}    Ожидают: {self.world.pending_enemy_spawn_count}",
             (220, 214, 204),
             self.panel_rect.left + PANEL_PADDING,
             self.panel_rect.top + SUMMARY_SECOND_LINE_TOP,
