@@ -4,6 +4,7 @@ from entities.level_exit import LevelExit
 from world.bsp_generator import BSPGenerator
 from world.level import Level
 from world.level_renderer import LevelRenderer
+from world.maze_generator import MazeGenerator
 
 
 @dataclass(frozen=True, slots=True)
@@ -37,17 +38,7 @@ class FloorBuildResult:
 
 class FloorBuilder:
     def build(self, floor_definition):
-        generated_level = BSPGenerator(
-            floor_definition.map_width,
-            floor_definition.map_height,
-            max_depth=floor_definition.max_depth,
-            enemy_count=floor_definition.enemy_count,
-            has_shop=floor_definition.has_shop,
-            is_boss_floor=floor_definition.is_boss_floor,
-            boss_min_room_width=floor_definition.boss_min_room_width,
-            boss_min_room_height=floor_definition.boss_min_room_height,
-            boss_min_room_area=floor_definition.boss_min_room_area,
-        ).generate()
+        generated_level = self.build_generated_level(floor_definition)
 
         level = Level(generated_level.tiles)
         level_renderer = LevelRenderer(
@@ -100,4 +91,29 @@ class FloorBuilder:
             floor_exit_room_id=generated_level.exit_room_id,
             shop_spawn=generated_level.shop_spawn,
             shop_room_id=generated_level.shop_room_id,
+        )
+
+    def build_generated_level(self, floor_definition):
+        if floor_definition.generator_type == "maze":
+            return MazeGenerator(
+                floor_definition.map_width,
+                floor_definition.map_height,
+                enemy_count=floor_definition.enemy_count,
+            ).generate()
+
+        if floor_definition.generator_type == "bsp":
+            return BSPGenerator(
+                floor_definition.map_width,
+                floor_definition.map_height,
+                max_depth=floor_definition.max_depth,
+                enemy_count=floor_definition.enemy_count,
+                has_shop=floor_definition.has_shop,
+                is_boss_floor=floor_definition.is_boss_floor,
+                boss_min_room_width=floor_definition.boss_min_room_width,
+                boss_min_room_height=floor_definition.boss_min_room_height,
+                boss_min_room_area=floor_definition.boss_min_room_area,
+            ).generate()
+
+        raise ValueError(
+            f"Unknown generator_type: {floor_definition.generator_type}"
         )

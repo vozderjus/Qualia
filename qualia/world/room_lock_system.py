@@ -7,8 +7,12 @@ class RoomLockSystem:
         if room_id is None or room_id in self.world.cleared_room_ids:
             return
 
+        room_doors = self.layout_cache.build_room_doors(room_id)
+        if not room_doors:
+            return
+
         self.world.pending_lock_room_id = room_id
-        self.world.pending_room_doors = self.layout_cache.build_room_doors(room_id)
+        self.world.pending_room_doors = room_doors
 
     def unlock_room(self):
         if self.world.locked_room_id is not None:

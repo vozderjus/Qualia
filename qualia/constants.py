@@ -9,6 +9,9 @@ CAMERA_ZOOM = 1.5
 
 # === все что связано с игроком ===
 PLAYER_SIZE = 64
+PLAYER_HITBOX_WIDTH = 36
+PLAYER_HITBOX_HEIGHT = 38
+PLAYER_RENDER_OFFSET_Y = 4
 PLAYER_SPEED = 200
 PLAYER_MAX_HP = 120
 HEAT_DROP_RANGE = (8, 12)
@@ -41,7 +44,7 @@ BLUE_EYE_COOLDOWN = 0.8
 
 # босс
 BOSS_SIZE = 128
-BOSS_HP = 1000
+BOSS_HP = 1750
 
 # === все что связано с тайлингом ===
 TILE_SIZE = 32

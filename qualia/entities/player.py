@@ -1,5 +1,7 @@
 import pygame
-from constants import PLAYER_MAX_HP, PLAYER_SIZE, PLAYER_SPEED
+from constants import (PLAYER_HITBOX_HEIGHT, PLAYER_HITBOX_WIDTH,
+                       PLAYER_MAX_HP, PLAYER_RENDER_OFFSET_Y, PLAYER_SIZE,
+                       PLAYER_SPEED)
 
 
 class Player():
@@ -11,9 +13,12 @@ class Player():
         self.curr_image = pygame.transform.scale(self.curr_image, (PLAYER_SIZE, PLAYER_SIZE))
 
         # работаем с rect
-        self.rect = self.curr_image.get_rect(topleft=(PLAYER_SIZE, PLAYER_SIZE))
+        self.rect = pygame.Rect(0, 0, PLAYER_HITBOX_WIDTH, PLAYER_HITBOX_HEIGHT)
+        self.render_offset_y = PLAYER_RENDER_OFFSET_Y
         if spawn_center is not None:
             self.rect.center = spawn_center
+        else:
+            self.rect.center = (PLAYER_SIZE, PLAYER_SIZE)
 
         # доп импорты
         self.level = level
@@ -47,6 +52,11 @@ class Player():
     def get_shot_origin(self):
         return self.rect.center
 
+    def get_render_rect(self):
+        return self.curr_image.get_rect(
+            center=(self.rect.centerx, self.rect.centery - self.render_offset_y)
+        )
+
     def take_damage(self, damage):
         self.hp = max(0, self.hp - damage)
 
@@ -54,10 +64,12 @@ class Player():
         return self.hp <= 0
 
     def render(self, display, camera=None):
+        render_rect = self.get_render_rect()
+
         if camera is None:
-            display.blit(self.curr_image, self.rect)
+            display.blit(self.curr_image, render_rect)
             return
 
-        screen_rect = camera.apply_rect(self.rect)
+        screen_rect = camera.apply_rect(render_rect)
         scaled_image = pygame.transform.scale(self.curr_image, screen_rect.size)
         display.blit(scaled_image, screen_rect)

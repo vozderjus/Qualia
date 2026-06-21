@@ -30,6 +30,7 @@ class FloorDefinition:
     boss_min_room_height: int = 0
     boss_min_room_area: int = 0
     music_track: MusicTrack | None = None
+    generator_type: str = "bsp"
 
 
 FLOOR_DEFINITIONS = (
@@ -46,7 +47,7 @@ FLOOR_DEFINITIONS = (
         music_track=MusicTrack(
             key="first_floor_theme",
             filename="first_floor_theme.mp3",
-            volume_multiplier=1 / 2,
+            volume_multiplier=1/2,
         ),
     ),
     FloorDefinition(
@@ -62,7 +63,7 @@ FLOOR_DEFINITIONS = (
         music_track=MusicTrack(
             key="second_floor_theme",
             filename="second_floor_theme.mp3",
-            volume_multiplier=1 / 3,
+            volume_multiplier=1/3,
         ),
     ),
     FloorDefinition(
@@ -79,7 +80,7 @@ FLOOR_DEFINITIONS = (
         music_track=MusicTrack(
             key="third_floor_theme",
             filename="third_floor_theme.mp3",
-            volume_multiplier=1 / 2,
+            volume_multiplier=1/2,
         ),
     ),
     FloorDefinition(
@@ -92,6 +93,12 @@ FLOOR_DEFINITIONS = (
         enemy_pool=(BlueEyeEnemy, ShotgunEnemy, HeartEnemy, SniperEnemy),
         floor_tint=(230, 225, 220),
         wall_tint=(205, 195, 190),
+        generator_type="maze",
+        music_track=MusicTrack(
+            key="fourth_floor_theme",
+            filename="fourth_floor_theme.mp3",
+            volume_multiplier=1/2,
+        )
     ),
     FloorDefinition(
         floor_number=5,
@@ -112,7 +119,7 @@ FLOOR_DEFINITIONS = (
         music_track=MusicTrack(
             key="last_floor_theme",
             filename="last_floor_theme.mp3",
-            volume_multiplier=1 / 2,
+            volume_multiplier=1/2,
         ),
     ),
 )
